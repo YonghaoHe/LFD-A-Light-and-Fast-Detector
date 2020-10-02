@@ -23,7 +23,7 @@ config_dict = dict()
 
 # work directory (saving log and model weights)
 config_dict['timestamp'] = time.strftime('%Y%m%d_%H%M%S', time.localtime())
-config_dict['work_dir'] = __file__.split('.')[0] + '_work_dir_' + config_dict['timestamp']
+config_dict['work_dir'] = './' + os.path.basename(__file__).split('.')[0] + '_work_dir_' + config_dict['timestamp']
 
 # log file path
 config_dict['log_path'] = os.path.join(config_dict['work_dir'], os.path.basename(__file__).split('.')[0] + '_' + config_dict['timestamp'] + '.log')
@@ -198,4 +198,3 @@ config_dict['warmup_setting'] = dict(by_epoch=False,
                                      warmup_ratio=0.1)
 assert isinstance(config_dict['warmup_setting'], dict) and 'by_epoch' in config_dict['warmup_setting'] and 'warmup_mode' in config_dict['warmup_setting'] \
        and 'warmup_loops' in config_dict['warmup_setting'] and 'warmup_ratio' in config_dict['warmup_setting']
-

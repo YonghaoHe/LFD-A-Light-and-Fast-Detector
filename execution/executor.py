@@ -4,11 +4,8 @@
 import os
 import logging
 from collections import OrderedDict
-import random
-import numpy
 import torch
 from torch.nn.parallel import DataParallel
-import cv2
 
 from .utils import *
 from .hooks import *

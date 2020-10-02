@@ -58,6 +58,8 @@ def get_priority(priority):
 
 
 class Hook(object):
+    def __init__(self):
+        self.priority = Priority.NORMAL
 
     def before_run(self, executor):
         pass

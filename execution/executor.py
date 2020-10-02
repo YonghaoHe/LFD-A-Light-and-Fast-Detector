@@ -231,7 +231,7 @@ class Executor(object):
         while self.config_dict['epoch'] < self.config_dict['training_epochs']:
             self.train()
 
-            if self.config_dict['evaluator'] is not None and self.config_dict['val_interval'] > 0 and (self.config_dict['epoch'] + 1) % self.config_dict['val_interval'] == 0:
+            if self.config_dict['evaluator'] is not None and self.config_dict['val_interval'] > 0 and (self.config_dict['epoch']) % self.config_dict['val_interval'] == 0:
                 self.val()
 
         self._call_hooks('after_run')

@@ -29,7 +29,7 @@ config_dict['work_dir'] = __file__.split('.')[0] + '_work_dir_' + config_dict['t
 config_dict['log_path'] = os.path.join(config_dict['work_dir'], os.path.basename(__file__).split('.')[0] + '_' + config_dict['timestamp'] + '.log')
 
 # training epochs
-config_dict['training_epochs'] = 10
+config_dict['training_epochs'] = 100
 
 # batch size
 config_dict['batch_size'] = 2

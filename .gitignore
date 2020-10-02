@@ -1,0 +1,12 @@
+.idea/
+data_pipeline/pack/*.pkl
+data_pipeline/dataset/utils/libs/*
+model/utils/libs/*.so
+model/losses/libs/*.so
+code_test/
+model/backbone/pretrained_backbone_weights/*
+!model/backbone/pretrained_backbone_weights/*.md
+configs/*
+!configs/*.py
+datasets/coco/*
+build/

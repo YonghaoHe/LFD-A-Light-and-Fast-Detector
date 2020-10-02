@@ -53,9 +53,9 @@ class COCOEvaluator(Evaluator):
                 self._detection_results.append(predict_item)
 
     def evaluate(self):
-        self._eval_display_str = ''
+        self._eval_display_str = '\n'
         if len(self._detection_results) == 0:
-            self._eval_display_str += 'No bboxes detected! Evaluation abort!'
+            self._eval_display_str += 'No bboxes detected! Evaluation abort!\n'
             return
 
         coco_predict = self._coco_gt.loadRes(self._detection_results)

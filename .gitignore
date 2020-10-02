@@ -9,4 +9,4 @@ model/backbone/pretrained_backbone_weights/*
 configs/*
 !configs/*.py
 datasets/coco/*
-build/
+/build/

@@ -6,20 +6,15 @@ import os
 
 class Dataset(object):
     """
-    本类将提供一个基于图像路径的dataset类，兼具打包和读取的功能
+    a dataset wrapper for save and load datasets
     """
+
     def __init__(self, parser=None, save_path=None, load_path=None):
         """
 
         :param parser:
-            类型 - AnnotationParser 或者 None
-            数据打包的时候需要通过parser构造新的数据集
         :param save_path:
-            类型 - str 或者 None
-            保存打包后的数据集索引信息。 以文本文件的方式保存
         :param load_path:
-            类型 - str 或者 None
-            读取打包好的数据集索引信息
         """
 
         if load_path is not None:
@@ -34,7 +29,7 @@ class Dataset(object):
 
     def __build_dataset(self):
         """
-        构建数据集
+        build dataset
         :return:
         """
         print('Start to pack samples.' + '-' * 20)
@@ -62,7 +57,7 @@ class Dataset(object):
 
     def __load_dataset(self):
         """
-        加载数据集
+        load dataset
         :return:
         """
         self._meta_info, self._index_annotation_dict, self._dataset = pickle.load(open(self._load_path, 'rb'))
@@ -77,7 +72,6 @@ class Dataset(object):
 
     def __len__(self):
         """
-        返回数据集的大小
         :return:
         """
         return len(self._index_annotation_dict)
@@ -88,8 +82,6 @@ class Dataset(object):
     @property
     def index_annotation_dict(self):
         """
-        获取数据库的索引-标注字典
-        未来可为sampler提供输入
         :return:
         """
         return self._index_annotation_dict
@@ -100,7 +92,6 @@ class Dataset(object):
 
     def get_dataset_statistics(self):
         """
-        打印数据库相关的基本信息
         :return:
         """
         num_samples_with_bbox = 0
@@ -116,12 +107,13 @@ class Dataset(object):
                     temp_label_bboxes_dict[label] = 1
             num_samples_with_bbox += 1
 
-        statistics = 'The total number of samples: %d\n' \
+        statistics = 'Dataset statistics:--------------\n' \
+                     'The total number of samples: %d\n' \
                      'The total number of classes: %d\n' \
                      'The total number of bboxes: %d\n' \
                      'The total number of neg samples: %d\n' \
-                     % (self.__len__(), len(temp_label_bboxes_dict.keys()), sum(temp_label_bboxes_dict.values()), self.__len__()-num_samples_with_bbox)
+                     % (self.__len__(), len(temp_label_bboxes_dict.keys()), sum(temp_label_bboxes_dict.values()), self.__len__() - num_samples_with_bbox)
         statistics += 'For each class:\n'
         for label, num_bboxes in temp_label_bboxes_dict.items():
-            statistics += 'class[%d] includes [%d] bboxes\n' % (label, num_bboxes)
+            statistics += 'class {:>3} includes {:>9} bboxes\n'.format(label, num_bboxes)
         return statistics

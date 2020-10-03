@@ -182,8 +182,8 @@ class Executor(object):
             for name, value in loss_values_dict.items():
                 self.config_dict['train_average_meter'].update(name, value, self.config_dict['batch_size'])
 
-            self._call_hooks('after_train_iter')
             self.config_dict['train_iter'] += 1
+            self._call_hooks('after_train_iter')
 
         self.config_dict['epoch'] += 1
         self._call_hooks('after_train_epoch')

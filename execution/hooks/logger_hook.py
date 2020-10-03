@@ -74,15 +74,17 @@ class LoggerHook(Hook):
     def after_train_iter(self, executor):
         if (executor.config_dict['inner_train_iter'] + 1) % executor.config_dict['display_interval'] == 0 or (executor.config_dict['inner_train_iter'] + 1) == len(executor.config_dict['train_data_loader']):
             executor.config_dict['logger'].info(self._get_log_info(executor))
+            executor.config_dict['train_average_meter'].clear()
 
     def after_val_iter(self, executor):
-        if (executor.config_dict['inner_val_iter'] + 1) % executor.config_dict['display_interval'] == 0 or executor.config_dict['inner_val_iter'] + 1 == len(executor.config_dict['val_data_loader']):
+        if (executor.config_dict['inner_val_iter'] + 1) % executor.config_dict['display_interval'] == 0 or (executor.config_dict['inner_val_iter'] + 1) == len(executor.config_dict['val_data_loader']):
             executor.config_dict['logger'].info(self._get_log_info(executor))
+            executor.config_dict['val_average_meter'].clear()
 
-    def after_train_epoch(self, executor):
-        executor.config_dict['train_average_meter'].clear()
+    # def after_train_epoch(self, executor):
+    #     executor.config_dict['train_average_meter'].clear()
 
     def after_val_epoch(self, executor):
         # first print evaluation metrics
         executor.config_dict['logger'].info(executor.config_dict['evaluator'].get_eval_display_str())
-        executor.config_dict['val_average_meter'].clear()
+        # executor.config_dict['val_average_meter'].clear()

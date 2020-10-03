@@ -185,8 +185,8 @@ class Executor(object):
             self._call_hooks('after_train_iter')
             self.config_dict['train_iter'] += 1
 
-        self._call_hooks('after_train_epoch')
         self.config_dict['epoch'] += 1
+        self._call_hooks('after_train_epoch')
 
     def val(self):
         self.config_dict['mode'] = 'val'

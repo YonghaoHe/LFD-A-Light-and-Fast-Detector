@@ -23,6 +23,7 @@ class LrSchedulerHook(Hook):
         self._warmup_loops = warmup_loops
         self._warmup_ratio = warmup_ratio
         self._epochs_warmup_skips = 0  # record the number of epochs the warmup process skips
+        self._resume_init_flag = False
 
         self._base_lr = []  # initial lr for all param groups
 
@@ -51,6 +52,11 @@ class LrSchedulerHook(Hook):
 
         return warmup_lr
 
+    def _resume_init_lr(self, executor):
+        if not self._resume_init_flag:
+            self._set_lr(executor, self._base_lr)  # resume init lr
+            self._resume_init_flag = True
+
     def before_run(self, executor):
         # NOTE: when resuming from a checkpoint, if 'initial_lr' is not saved,
         # it will be set according to the optimizer params
@@ -64,10 +70,12 @@ class LrSchedulerHook(Hook):
             if self._warmup_mode is not None and current_loop <= self._warmup_loops:
                 warmup_lr = self.get_warmup_lr(current_loop)
                 self._set_lr(executor, warmup_lr)
-            else:  # resume regular lr
-                for i in range(self._epochs_warmup_skips):
-                    executor.config_dict['lr_scheduler'].step()
-                self._epochs_warmup_skips = 0
+            else:
+                self._resume_init_lr(executor)
+                if self._epochs_warmup_skips > 0:
+                    for i in range(self._epochs_warmup_skips):
+                        executor.config_dict['lr_scheduler'].step()
+                    self._epochs_warmup_skips = 0
 
     def before_train_iter(self, executor):
         if not self._by_epoch:
@@ -75,14 +83,16 @@ class LrSchedulerHook(Hook):
             if self._warmup_mode is not None and current_loop <= self._warmup_loops:
                 warmup_lr = self.get_warmup_lr(current_loop)
                 self._set_lr(executor, warmup_lr)
-            else:  # resume regular lr
-                for i in range(self._epochs_warmup_skips):
-                    executor.config_dict['lr_scheduler'].step()
-                self._epochs_warmup_skips = 0
+            else:
+                self._resume_init_lr(executor)
+                if self._epochs_warmup_skips > 0:
+                    for i in range(self._epochs_warmup_skips):
+                        executor.config_dict['lr_scheduler'].step()
+                    self._epochs_warmup_skips = 0
 
     def after_train_epoch(self, executor):
         # the lr scheduler does not execute step while warming up
-        current_loop = executor.config_dict['train_iter'] + 1 if not self._by_epoch else executor.config_dict['epoch'] + 1
+        current_loop = executor.config_dict['train_iter'] if not self._by_epoch else executor.config_dict['epoch']
         if self._warmup_mode is not None and current_loop <= self._warmup_loops:
             self._epochs_warmup_skips += 1
         else:

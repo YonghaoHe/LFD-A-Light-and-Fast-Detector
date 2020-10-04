@@ -30,7 +30,7 @@ class FCOSHead(nn.Module):
                  num_head_channels=256,
                  num_heads=5,
                  num_layers=4,
-                 norm_cfg=dict(type='BN')):
+                 norm_cfg=None):
         super(FCOSHead, self).__init__()
         if norm_cfg is not None:
             assert isinstance(norm_cfg, dict) and 'type' in norm_cfg

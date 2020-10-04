@@ -3,7 +3,6 @@
 import os
 import torch
 import torch.nn as nn
-import torch.utils.checkpoint as cp
 
 __all__ = ['ResNet']
 
@@ -24,11 +23,10 @@ class BasicBlock(nn.Module):
                  stride=1,
                  dilation=1,
                  downsample=None,
+                 style='pytorch',
+                 norm_cfg=dict(type='BN'),  # GN can be set as dict(type='GN', num_groups=32),
                  dcn=None,
                  plugins=None,
-                 style='pytorch',
-                 with_cp=False,
-                 norm_cfg=dict(type='BN')  # GN can be set as dict(type='GN', num_groups=32)
                  ):
         super(BasicBlock, self).__init__()
         assert dcn is None, 'Not implemented yet.'
@@ -43,9 +41,8 @@ class BasicBlock(nn.Module):
         self.norm2_name, norm2 = get_norm_layer(norm_cfg, num_channels=num_block_channels, suffix=2)
         self.add_module(self.norm2_name, norm2)
 
-        self.conv1 = nn.Conv2d(num_input_channels, num_block_channels, 3, stride=stride, padding=dilation, dilation=dilation, bias=False)
-
-        self.conv2 = nn.Conv2d(num_block_channels, num_block_channels, 3, padding=1, bias=False)
+        self.conv1 = nn.Conv2d(num_input_channels, num_block_channels, kernel_size=3, stride=stride, padding=dilation, dilation=dilation, bias=False)
+        self.conv2 = nn.Conv2d(num_block_channels, num_block_channels, kernel_size=3, padding=1, bias=False)
 
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
@@ -89,10 +86,8 @@ class Bottleneck(nn.Module):
                  dilation=1,
                  downsample=None,
                  style='pytorch',
-                 with_cp=False,
-                 conv_cfg=None,
                  norm_cfg=dict(type='BN'),  # GN can be set as dict(type='GN', num_groups=32)
-                 dcn=None, ):
+                 dcn=None):
         """Bottleneck block for ResNet.
         If style is "pytorch", the stride-two layer is the 3x3 conv layer,
         if it is "caffe", the stride-two layer is the first 1x1 conv layer.
@@ -109,8 +104,6 @@ class Bottleneck(nn.Module):
         self.stride = stride
         self.dilation = dilation
         self.style = style
-        self.with_cp = with_cp
-        self.conv_cfg = conv_cfg
         self.dcn = dcn
         self.with_dcn = dcn is not None
 
@@ -269,7 +262,7 @@ class ResNet(nn.Module):
                  frozen_stages=-1,
                  conv_cfg=None,
                  norm_cfg=dict(type='BN', requires_grad=True),
-                 norm_eval=True,  # 注意这个参数
+                 norm_eval=True,  # determine whether to fix norm weights or not during training
                  dcn=None,
                  stage_with_dcn=(False, False, False, False),
                  with_cp=False,
@@ -438,17 +431,12 @@ class ResNet(nn.Module):
         if missing_keys:
             print('[WARNING: ResNet pretrained weights load] missing keys:')
             for i, key in enumerate(missing_keys):
-                print(key + '\t', end='')
-                if (i + 1) % 10 == 0:
-                    print()
+                print(key + '\t', end='') if i < len(missing_keys) - 1 else print(key)
 
         if unexpected_keys:
             print('[WARNING: ResNet pretrained weights load] unexpected keys:')
             for i, key in enumerate(unexpected_keys):
-                print(key + '\t', end='')
-                if (i + 1) % 10 == 0:
-                    print()
-        print()
+                print(key + '\t', end='') if i < len(unexpected_keys) - 1 else print(key)
 
     def _init_weights(self):
         for m in self.modules():

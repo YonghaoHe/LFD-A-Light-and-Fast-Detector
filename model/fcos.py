@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 from .utils import batched_nms
+
 __all__ = ['FCOS']
 
 INF = 1e8
@@ -15,12 +16,12 @@ class FCOS(nn.Module):
                  neck=None,
                  head=None,
                  num_classes=80,
-                 regress_ranges=((-1, 64), (64, 128), (128, 256), (256, 512), (512, INF)),
+                 regress_ranges=((0, 64), (64, 128), (128, 256), (256, 512), (512, INF)),
                  point_strides=(8, 16, 32, 64, 128),
                  classification_loss_func=None,
                  regression_loss_func=None,
                  centerness_loss_func=None,
-                 classification_threshold=0.5,
+                 classification_threshold=0.05,
                  nms_threshold=0.4):
         super(FCOS, self).__init__()
         assert len(regress_ranges) == len(point_strides), 'the length should be the same!'
@@ -41,17 +42,16 @@ class FCOS(nn.Module):
 
     def generate_point_coordinates(self, feature_map_sizes):
         """
-        用于计算feature map 上的每个location，反算回原图对应的点，这个点理论上就是location对应感受野的中心
-        :param feature_map_sizes: dict, 其中每个元素为(h, w),顺序和大小务必与point_stride的一致，否则结果不可预测
+        transform feature map points to locations in original input image
+        :param feature_map_sizes:
         :return:
         """
 
         def generate_for_single_feature_map(func_feature_map_size, func_stride):
             height, width = func_feature_map_size
-            x_coordinates = torch.arange(0, width*func_stride, func_stride)
-            y_coordinates = torch.arange(0, height*func_stride, func_stride)
+            x_coordinates = torch.arange(0, width * func_stride, func_stride)
+            y_coordinates = torch.arange(0, height * func_stride, func_stride)
 
-            # 这里这个顺序是为了在排列point坐标时，按照（x,y）的格式，且先从左到右，然后从上到下
             y_mesh, x_mesh = torch.meshgrid(y_coordinates, x_coordinates)
 
             # 得到点的坐标矩阵，shape为（n,2）, n= height x width, 第一列为x的坐标，第二列为y的坐标
@@ -76,6 +76,7 @@ class FCOS(nn.Module):
         :param gt_labels_list: lsit,其中每个元素为每幅图像的gt bboxes的类别标签，其格式为torch.Tensor([label1, label2,...])
         :return:
         """
+
         def generate_for_single_image(func_gt_bboxes, func_gt_labels, func_concat_point_coordinates, func_concat_regress_ranges):
             """
             注意，这里的所有前景类别标签∈[0,num_classes-1],背景标签类别为num_classes
@@ -91,7 +92,7 @@ class FCOS(nn.Module):
             num_points = func_concat_point_coordinates.size(0)  # 注意，这是所有level的所有points
             num_gt_bboxes = func_gt_labels.size(0)
             if num_gt_bboxes == 0:  # 当该幅图像没有gt_bboxes时，直接返回label index = num_classes
-                return func_gt_labels.new_full((num_points, ), self._num_classes), \
+                return func_gt_labels.new_full((num_points,), self._num_classes), \
                        func_gt_bboxes.new_zeros((num_points, 4))
 
             # 计算每个gt_bboxes的面积，并且将其扩展到num_points那么多个
@@ -110,9 +111,9 @@ class FCOS(nn.Module):
 
             # 计算x和y分别到所有gt_bboxes的四个边的距离
             distance_to_left = point_x_coordinates - func_gt_bboxes[:, :, 0]
-            distance_to_right = (func_gt_bboxes[:, :, 0]+func_gt_bboxes[:, :, 2]-1) - point_x_coordinates
+            distance_to_right = (func_gt_bboxes[:, :, 0] + func_gt_bboxes[:, :, 2] - 1) - point_x_coordinates
             distance_to_top = point_y_coordinates - func_gt_bboxes[:, :, 1]
-            distance_to_bottom = (func_gt_bboxes[:, :, 1]+func_gt_bboxes[:, :, 3]-1) - point_y_coordinates
+            distance_to_bottom = (func_gt_bboxes[:, :, 1] + func_gt_bboxes[:, :, 3] - 1) - point_y_coordinates
 
             regress_targets = torch.stack((distance_to_left,
                                            distance_to_top,
@@ -166,7 +167,6 @@ class FCOS(nn.Module):
         classification_targets_list = []
         regress_targets_list = []
         for i, gt_bboxes in enumerate(gt_bboxes_list):
-
             temp_classification_targets, temp_regress_targets = \
                 generate_for_single_image(gt_bboxes, gt_labels_list[i], concat_point_coordinates, concat_regress_ranges)
 
@@ -192,7 +192,7 @@ class FCOS(nn.Module):
     def centerness_target(self, pos_flatten_regress_targets):
         left_right = pos_flatten_regress_targets[:, [0, 2]]
         top_bottom = pos_flatten_regress_targets[:, [1, 3]]
-        centerness_targets = (left_right.min(dim=-1)[0]/left_right.max(dim=-1)[0]) * (top_bottom.min(dim=-1)[0]/top_bottom.max(dim=-1)[0])
+        centerness_targets = (left_right.min(dim=-1)[0] / left_right.max(dim=-1)[0]) * (top_bottom.min(dim=-1)[0] / top_bottom.max(dim=-1)[0])
         return torch.sqrt(centerness_targets)
 
     def distance2bbox(self, points, distance, max_shape=None):
@@ -242,9 +242,6 @@ class FCOS(nn.Module):
 
         # 对预测的三类feature map进行调整，使其能够和target对齐
         batch_size = predict_classification_tensor.shape[0]
-        # flatten_predict_labels = [predict_label.permute(0, 2, 3, 1).reshape(-1, self._num_classes) for predict_label in predict_classification_tensor]
-        # flatten_predict_regresses = [predict_regress.permute(0, 2, 3, 1).reshape(-1, 4) for predict_regress in predict_regress_tensor]
-        # flatten_predict_centernesses = [predict_centerness.permute(0, 2, 3, 1).reshape(-1) for predict_centerness in predict_centerness_tensor]
         flatten_predict_classification_tensor = predict_classification_tensor.reshape(-1, self._num_classes)
         flatten_predict_regress_tensor = predict_regress_tensor.reshape(-1, 4)
         flatten_predict_centerness_tensor = predict_centerness_tensor.reshape(-1)
@@ -268,7 +265,7 @@ class FCOS(nn.Module):
         pos_indexes = (flatten_classification_target_tensor != self._num_classes).nonzero().reshape(-1)
         num_pos = pos_indexes.nelement()
 
-        classification_loss = self._classification_loss_func(flatten_predict_classification_tensor, flatten_classification_target_tensor, avg_factor=num_pos+batch_size)
+        classification_loss = self._classification_loss_func(flatten_predict_classification_tensor, flatten_classification_target_tensor, avg_factor=num_pos + batch_size)
 
         pos_flatten_predict_regress_tensor = flatten_predict_regress_tensor[pos_indexes]
         pos_flatten_predict_centerness_tensor = flatten_predict_centerness_tensor[pos_indexes]
@@ -308,10 +305,10 @@ class FCOS(nn.Module):
         :return:
         """
 
-        def get_for_single_image(func_predict_classification,
-                                 func_predict_regression,
-                                 func_predict_centerness,
-                                 func_concat_point_coordinates):
+        def get_results_for_single_image(func_predict_classification,
+                                         func_predict_regression,
+                                         func_predict_centerness,
+                                         func_concat_point_coordinates):
             func_predict_classification = func_predict_classification.sigmoid()
             func_predict_centerness = func_predict_centerness.sigmoid()
 
@@ -322,8 +319,8 @@ class FCOS(nn.Module):
             selected = class_max_score > self._classification_threshold
             if selected.sum() == 0:
                 return torch.empty((0, 4), dtype=torch.float32), \
-                       torch.empty((0, ), dtype=torch.float32), \
-                       torch.empty((0, ), dtype=torch.int64)
+                       torch.empty((0,), dtype=torch.float32), \
+                       torch.empty((0,), dtype=torch.int64)
 
             class_scores = class_max_score[selected]
             class_indexes = class_max_index[selected]
@@ -348,10 +345,10 @@ class FCOS(nn.Module):
 
         results = []
         for i in range(num_samples):
-            temp_bboxes, temp_class_scores, temp_class_indexes = get_for_single_image(predict_classification_tensor[i],
-                                                                                      predict_regress_tensor[i],
-                                                                                      predict_centerness_tensor[i],
-                                                                                      concat_point_coordinates)
+            temp_bboxes, temp_class_scores, temp_class_indexes = get_results_for_single_image(predict_classification_tensor[i],
+                                                                                              predict_regress_tensor[i],
+                                                                                              predict_centerness_tensor[i],
+                                                                                              concat_point_coordinates)
             if temp_bboxes.size(0) == 0:
                 results.append([])
                 continue
@@ -383,19 +380,19 @@ class FCOS(nn.Module):
         for i, classification_output in enumerate(classification_outputs):
             n, c, h, w = classification_output.shape
             classification_output = classification_output.permute([0, 2, 3, 1])
-            classification_output = classification_output.reshape((n, h*w, c))
+            classification_output = classification_output.reshape((n, h * w, c))
             classification_reformat_outputs.append(classification_output)
 
             self._head_to_feature_map_sizes[i] = (h, w)
 
             n, c, h, w = regression_outputs[i].shape
             regression_output = regression_outputs[i].permute([0, 2, 3, 1])
-            regression_output = regression_output.reshape((n, h*w, c))
+            regression_output = regression_output.reshape((n, h * w, c))
             regression_reformat_outputs.append(regression_output)
 
             n, c, h, w = centerness_outputs[i].shape
             centerness_output = centerness_outputs[i].permute([0, 2, 3, 1])
-            centerness_output = centerness_output.reshape((n, h*w, c))
+            centerness_output = centerness_output.reshape((n, h * w, c))
             centerness_reformat_outputs.append(centerness_output)
 
         classification_output_tensor = torch.cat(classification_reformat_outputs, dim=1)
@@ -403,5 +400,3 @@ class FCOS(nn.Module):
         centerness_output_tensor = torch.cat(centerness_reformat_outputs, dim=1)
 
         return classification_output_tensor, regression_output_tensor, centerness_output_tensor
-
-

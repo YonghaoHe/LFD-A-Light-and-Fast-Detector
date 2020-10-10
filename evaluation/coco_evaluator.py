@@ -37,7 +37,7 @@ class COCOEvaluator(Evaluator):
         assert isinstance(results, tuple) and len(results) == 2, 'update info should contain two parts: predict bboxes and meta info.'
         predict_bboxes, meta_batch = results
 
-        # reformat to meet COCO requirement
+        # reformat to satisfy COCO requirement
         for i in range(len(meta_batch)):
             meta_single = meta_batch[i]
             image_id = meta_single['image_id']

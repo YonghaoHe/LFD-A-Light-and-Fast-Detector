@@ -99,7 +99,7 @@ class DataLoader(object):
 
                 # fill batch
                 image_batch[i] = sample_temp['image'].transpose([2, 0, 1])
-                if 'bboxes' in sample:  # transform annotation from list to numpy
+                if 'bboxes' in sample_temp:  # transform annotation from list to numpy
                     annotation_batch.append((numpy.array(sample_temp['bboxes'], dtype=numpy.float32), numpy.array(sample_temp['bbox_labels'], dtype=numpy.int64)))
                 else:
                     annotation_batch.append((numpy.empty((0, 4), dtype=numpy.float32), numpy.empty((0,), dtype=numpy.int64)))

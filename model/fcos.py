@@ -38,7 +38,11 @@ class FCOS(nn.Module):
         self._centerness_loss_func = centerness_loss_func
         self._classification_threshold = classification_threshold
         self._nms_cfg = dict(type='nms', iou_thr=nms_threshold)
-        self._head_to_feature_map_sizes = dict()  # dynamically record the feature map size for each head, and it will be used to obtain point coordinates
+        self._head_indexes_to_feature_map_sizes = dict()  # dynamically record the feature map size for each head, and it will be used to obtain point coordinates
+
+    @property
+    def head_indexes_to_feature_map_sizes(self):
+        return self._head_indexes_to_feature_map_sizes
 
     def generate_point_coordinates(self, feature_map_sizes):
         """
@@ -77,7 +81,7 @@ class FCOS(nn.Module):
         :return:
         """
 
-        def generate_for_single_image(func_gt_bboxes, func_gt_labels, func_concat_point_coordinates, func_concat_regress_ranges):
+        def generate_target_for_single_image(func_gt_bboxes, func_gt_labels, func_concat_point_coordinates, func_concat_regress_ranges):
             """
             注意，这里的所有前景类别标签∈[0,num_classes-1],背景标签类别为num_classes
             注意，这里的所有前景类别标签∈[0,num_classes-1],背景标签类别为num_classes
@@ -168,7 +172,7 @@ class FCOS(nn.Module):
         regress_targets_list = []
         for i, gt_bboxes in enumerate(gt_bboxes_list):
             temp_classification_targets, temp_regress_targets = \
-                generate_for_single_image(gt_bboxes, gt_labels_list[i], concat_point_coordinates, concat_regress_ranges)
+                generate_target_for_single_image(gt_bboxes, gt_labels_list[i], concat_point_coordinates, concat_regress_ranges)
 
             classification_targets_list.append(temp_classification_targets)
             regress_targets_list.append(temp_regress_targets)
@@ -235,7 +239,7 @@ class FCOS(nn.Module):
             gt_labels_list.append(torch.from_numpy(labels_numpy))
 
         # 获取所有level上的feature map locations在原图中的坐标位置
-        all_point_coordinates_list = self.generate_point_coordinates(self._head_to_feature_map_sizes)
+        all_point_coordinates_list = self.generate_point_coordinates(self._head_indexes_to_feature_map_sizes)
 
         # 进行annotation 到 target 的转换
         classification_target_tensor, regress_target_tensor = self.annotation_to_target(all_point_coordinates_list, gt_bboxes_list, gt_labels_list)
@@ -339,7 +343,7 @@ class FCOS(nn.Module):
 
         predict_classification_tensor, predict_regress_tensor, predict_centerness_tensor = predict_outputs
         num_samples = predict_classification_tensor.size(0)
-        all_point_coordinates_list = self.generate_point_coordinates(self._head_to_feature_map_sizes)
+        all_point_coordinates_list = self.generate_point_coordinates(self._head_indexes_to_feature_map_sizes)
         concat_point_coordinates = torch.cat(all_point_coordinates_list, dim=0)
         concat_point_coordinates = concat_point_coordinates.to(predict_classification_tensor.device)
 
@@ -383,7 +387,7 @@ class FCOS(nn.Module):
             classification_output = classification_output.reshape((n, h * w, c))
             classification_reformat_outputs.append(classification_output)
 
-            self._head_to_feature_map_sizes[i] = (h, w)
+            self._head_indexes_to_feature_map_sizes[i] = (h, w)
 
             n, c, h, w = regression_outputs[i].shape
             regression_output = regression_outputs[i].permute([0, 2, 3, 1])

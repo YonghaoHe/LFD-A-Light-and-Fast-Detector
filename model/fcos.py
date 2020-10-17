@@ -22,7 +22,7 @@ class FCOS(nn.Module):
                  regression_loss_func=None,
                  centerness_loss_func=None,
                  classification_threshold=0.05,
-                 nms_threshold=0.4):
+                 nms_threshold=0.5):
         super(FCOS, self).__init__()
         assert len(regress_ranges) == len(point_strides), 'the length should be the same!'
         self._backbone = backbone

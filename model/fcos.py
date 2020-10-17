@@ -177,18 +177,6 @@ class FCOS(nn.Module):
             classification_targets_list.append(temp_classification_targets)
             regress_targets_list.append(temp_regress_targets)
 
-        # 重新组装targets, 将每幅图的target按照level拆分开, 然后将所有图在同一个level的拼接
-        # 这里完全可以不用这么复杂，拆了又拼！！！！！！！！
-        # num_points_per_level = [point_coordinates.size(0) for point_coordinates in all_point_coordinates_list]
-        # label_targets_split_list = [label_targets.split(num_points_per_level, dim=0) for label_targets in classification_targets_list]
-        # regress_targets_split_list = [regress_targets.split(num_points_per_level, dim=0) for regress_targets in regress_targets_list]
-        #
-        # concat_label_targets_per_level = []
-        # concat_regress_targets_per_level = []
-        # for i in range(self._num_levels):
-        #     concat_label_targets_per_level.append(torch.cat([label_targets_split[i] for label_targets_split in label_targets_split_list], dim=0))
-        #     concat_regress_targets_per_level.append(torch.cat([regress_targets_split[i] for regress_targets_split in regress_targets_split_list], dim=0))
-
         stack_classification_targets_tensor = torch.stack(classification_targets_list, dim=0)
         stack_regression_targets_tensor = torch.stack(regress_targets_list, dim=0)
         return stack_classification_targets_tensor, stack_regression_targets_tensor

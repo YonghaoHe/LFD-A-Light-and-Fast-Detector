@@ -7,10 +7,10 @@ __all__ = ['RandomDatasetSampler']
 
 class RandomDatasetSampler(object):
     """
-    完全随机排列整个dataset，然后按照batch_size返回indexes
-    工作流程：
-    1）随机打乱所有的indexes
-    2）按照顺序返回打乱后的indexes，每次返回batch_size个
+    shuffle the whole dataset, and then return sample indexes sequentially
+    steps：
+    1) randomize all sample indexes
+    2) return batched indexes sequentially
     """
 
     def __init__(self, index_annotation_dict, batch_size=1, shuffle=True, ignore_last=False):

@@ -29,13 +29,13 @@ config_dict['work_dir'] = './' + os.path.basename(__file__).split('.')[0] + '_wo
 config_dict['log_path'] = os.path.join(config_dict['work_dir'], os.path.basename(__file__).split('.')[0] + '_' + config_dict['timestamp'] + '.log')
 
 # training epochs
-config_dict['training_epochs'] = 100
+config_dict['training_epochs'] = 12
 
 # batch size
 config_dict['batch_size'] = 2
 
 # reproductive
-config_dict['seed'] = None
+config_dict['seed'] = 666
 config_dict['cudnn_benchmark'] = True
 if config_dict['seed'] is not None:
     set_random_seed(config_dict['seed'])
@@ -73,7 +73,7 @@ train_dataset_sampler = RandomDatasetSampler(index_annotation_dict=train_dataset
                                              batch_size=config_dict['batch_size'],
                                              shuffle=True,
                                              ignore_last=False)
-train_region_sampler = TypicalCOCOTrainingRegionSampler()
+train_region_sampler = TypicalCOCOTrainingRegionSampler(output_size=(1333, 1333), resize_shorter_range=(800, ), resize_longer_limit=1333)
 config_dict['train_data_loader'] = DataLoader(dataset=train_dataset,
                                               dataset_sampler=train_dataset_sampler,
                                               region_sampler=train_region_sampler,
@@ -88,7 +88,7 @@ val_dataset_sampler = RandomDatasetSampler(index_annotation_dict=val_dataset.ind
                                            batch_size=config_dict['batch_size'],
                                            shuffle=False,
                                            ignore_last=False)
-val_region_sampler = TypicalCOCOTrainingRegionSampler()
+val_region_sampler = TypicalCOCOTrainingRegionSampler(output_size=(1333, 1333), resize_shorter_range=(800, ), resize_longer_limit=1333)
 config_dict['val_data_loader'] = DataLoader(dataset=val_dataset,
                                             dataset_sampler=val_dataset_sampler,
                                             region_sampler=val_region_sampler,
@@ -125,14 +125,14 @@ fcos_neck = FPN(num_input_channels_list=fcos_backbone.num_output_channels_list,
                 norm_on_lateral=False,  # consistent with mmdet
                 relu_on_lateral=False,  # consistent with mmdet
                 relu_before_extra=True,
-                norm_cfg=dict(type='BN'),
+                norm_cfg=None,
                 )
 
 fcos_head = FCOSHead(num_classes=80,
                      num_input_channels=256,
                      num_head_channels=256,
                      num_layers=4,
-                     norm_cfg=dict(type='BN')
+                     norm_cfg=None
                      )
 
 classifiation_loss = FocalLoss(use_sigmoid=True,
@@ -156,7 +156,7 @@ config_dict['model'] = FCOS(backbone=fcos_backbone,
                             regression_loss_func=regression_loss,
                             centerness_loss_func=centerness_loss,
                             classification_threshold=0.05,
-                            nms_threshold=0.4
+                            nms_threshold=0.5
                             )
 
 # init param weights file
@@ -185,7 +185,7 @@ config_dict['optimizer'] = torch.optim.SGD(params=config_dict['model'].parameter
                                            weight_decay=config_dict['weight_decay'])
 
 # multi step lr scheduler is used here
-milestones = [2, 4, 8]
+milestones = [8, 11]
 assert max(milestones) < config_dict['training_epochs'], 'the max value in milestones should be less than total epochs!'
 config_dict['lr_scheduler'] = torch.optim.lr_scheduler.MultiStepLR(config_dict['optimizer'],
                                                                    milestones=milestones,
@@ -194,7 +194,7 @@ config_dict['lr_scheduler'] = torch.optim.lr_scheduler.MultiStepLR(config_dict['
 # add warmup parameters
 config_dict['warmup_setting'] = dict(by_epoch=False,
                                      warmup_mode='linear',  # if no warmup needed, set warmup_mode = None
-                                     warmup_loops=100,
+                                     warmup_loops=1000,
                                      warmup_ratio=0.1)
 assert isinstance(config_dict['warmup_setting'], dict) and 'by_epoch' in config_dict['warmup_setting'] and 'warmup_mode' in config_dict['warmup_setting'] \
        and 'warmup_loops' in config_dict['warmup_setting'] and 'warmup_ratio' in config_dict['warmup_setting']

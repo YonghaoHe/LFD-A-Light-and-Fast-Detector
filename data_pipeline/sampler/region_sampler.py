@@ -86,7 +86,7 @@ class TypicalCOCOTrainingRegionSampler(BaseRegionSampler):
         sample['image'] = im_resized
         sample['resize_scale'] = resize_scale  # 'resize_scale' will be used as meta info by evaluator
 
-        yield sample
+        return sample
 
     @property
     def output_size(self):

@@ -156,7 +156,10 @@ config_dict['model'] = FCOS(backbone=fcos_backbone,
                             regression_loss_func=regression_loss,
                             centerness_loss_func=centerness_loss,
                             classification_threshold=0.05,
-                            nms_threshold=0.5
+                            nms_threshold=0.5,
+                            pre_nms_bbox_limit=1000,
+                            post_nms_bbox_limit=100,
+                            param_groups_cfg=dict(bias_lr=0.02, bias_weight_decay=0.)
                             )
 
 # init param weights file
@@ -179,7 +182,7 @@ optimizer and scheduler can be customized
 config_dict['learning_rate'] = 0.01
 config_dict['momentum'] = 0.9
 config_dict['weight_decay'] = 0.0001
-config_dict['optimizer'] = torch.optim.SGD(params=config_dict['model'].parameters(),
+config_dict['optimizer'] = torch.optim.SGD(params=config_dict['model'].get_param_groups_for_optimizer(),
                                            lr=config_dict['learning_rate'],
                                            momentum=config_dict['momentum'],
                                            weight_decay=config_dict['weight_decay'])

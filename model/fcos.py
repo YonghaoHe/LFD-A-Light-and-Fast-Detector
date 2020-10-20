@@ -22,7 +22,10 @@ class FCOS(nn.Module):
                  regression_loss_func=None,
                  centerness_loss_func=None,
                  classification_threshold=0.05,
-                 nms_threshold=0.5):
+                 nms_threshold=0.5,
+                 pre_nms_bbox_limit=1000,
+                 post_nms_bbox_limit=100,
+                 param_groups_cfg=None):
         super(FCOS, self).__init__()
         assert len(regress_ranges) == len(point_strides), 'the length should be the same!'
         self._backbone = backbone
@@ -38,11 +41,44 @@ class FCOS(nn.Module):
         self._centerness_loss_func = centerness_loss_func
         self._classification_threshold = classification_threshold
         self._nms_cfg = dict(type='nms', iou_thr=nms_threshold)
+        self._pre_nms_bbox_limit = pre_nms_bbox_limit
+        self._post_nms_bbox_limit = post_nms_bbox_limit
+        self._param_groups_cfg = param_groups_cfg
         self._head_indexes_to_feature_map_sizes = dict()  # dynamically record the feature map size for each head, and it will be used to obtain point coordinates
 
     @property
     def head_indexes_to_feature_map_sizes(self):
         return self._head_indexes_to_feature_map_sizes
+
+    def get_param_groups_for_optimizer(self):
+        """
+        only support bias related configs: bias_lr, bias_weight_decay
+        :return:
+        """
+        if self._param_groups_cfg is not None:
+            assert isinstance(self._param_groups_cfg, dict)
+            bias_parameters = []
+            other_parameters = []
+            for name, module in self.named_modules():
+                if isinstance(module, (nn.BatchNorm2d, nn.GroupNorm)):  # norm bias is ignored
+                    for _, param in module.named_parameters(recurse=False):
+                        other_parameters.append(param)
+                else:
+                    for param_name, param in module.named_parameters(recurse=False):
+                        if 'bias' in param_name:
+                            bias_parameters.append(param)
+                        else:
+                            other_parameters.append(param)
+            bias_group = dict(params=bias_parameters)
+            if 'bias_lr' in self._param_groups_cfg:
+                bias_group['lr'] = self._param_groups_cfg['bias_lr']
+            if 'bias_weight_decay' in self._param_groups_cfg:
+                bias_group['weight_decay'] = self._param_groups_cfg['bias_weight_decay']
+            param_groups = [bias_group,
+                            dict(params=other_parameters)]
+            return param_groups
+        else:
+            return self.parameters()
 
     def generate_point_coordinates(self, feature_map_sizes):
         """
@@ -302,18 +338,27 @@ class FCOS(nn.Module):
                                          func_predict_centerness,
                                          func_concat_point_coordinates):
             func_predict_classification = func_predict_classification.sigmoid()
-            func_predict_centerness = func_predict_centerness.sigmoid()
-
-            # apply centerness to classification scores
-            func_predict_classification = func_predict_classification * func_predict_centerness
+            func_predict_centerness = func_predict_centerness.squeeze().sigmoid()
 
             class_max_score, class_max_index = func_predict_classification.max(dim=-1)
+
+            # apply pre nms bbox limit
+            if 0 < self._pre_nms_bbox_limit < class_max_score.size(0):
+                _, top_indexes = class_max_score.topk(self._pre_nms_bbox_limit)
+                class_max_score = class_max_score[top_indexes]
+                class_max_index = class_max_index[top_indexes]
+                func_predict_regression = func_predict_regression[top_indexes]
+                func_predict_centerness = func_predict_centerness[top_indexes]
+                func_concat_point_coordinates = func_concat_point_coordinates[top_indexes]
+
             selected = class_max_score > self._classification_threshold
             if selected.sum() == 0:
                 return torch.empty((0, 4), dtype=torch.float32), \
                        torch.empty((0,), dtype=torch.float32), \
                        torch.empty((0,), dtype=torch.int64)
 
+            # apply centerness to classification scores
+            class_max_score = class_max_score * func_predict_centerness
             class_scores = class_max_score[selected]
             class_indexes = class_max_index[selected]
 
@@ -341,10 +386,18 @@ class FCOS(nn.Module):
                                                                                               predict_regress_tensor[i],
                                                                                               predict_centerness_tensor[i],
                                                                                               concat_point_coordinates)
+
+            # if empty, append []
             if temp_bboxes.size(0) == 0:
                 results.append([])
                 continue
+
+            # perform nms
             bboxes_nms, keep = batched_nms(temp_bboxes, temp_class_scores, temp_class_indexes, self._nms_cfg)
+            if 0 < self._post_nms_bbox_limit < bboxes_nms.size(0):
+                bboxes_nms = bboxes_nms[:self._post_nms_bbox_limit]
+                keep = keep[:self._post_nms_bbox_limit]
+
             # [x1, y1, x2, y2, score] -> [x1, y1, w, h, score]
             bboxes_nms[:, 2] = bboxes_nms[:, 2] - bboxes_nms[:, 0] + 1
             bboxes_nms[:, 3] = bboxes_nms[:, 3] - bboxes_nms[:, 1] + 1

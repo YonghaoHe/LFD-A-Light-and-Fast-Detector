@@ -186,6 +186,7 @@ config_dict['optimizer'] = torch.optim.SGD(params=config_dict['model'].get_param
                                            lr=config_dict['learning_rate'],
                                            momentum=config_dict['momentum'],
                                            weight_decay=config_dict['weight_decay'])
+config_dict['optimizer_grad_clip_cfg'] = dict(max_norm=35, norm_type=2)
 
 # multi step lr scheduler is used here
 milestones = [8, 11]

@@ -13,6 +13,10 @@ class LoggerHook(Hook):
             log_str = 'Epoch[{}][{}/{}], lr:{:.5f}'.format(executor.config_dict['epoch'] + 1, executor.config_dict['inner_train_iter'] + 1, len(executor.config_dict['train_data_loader']), executor.get_current_lr())
             log_str += ', speed:{:.2f} images/s'.format(executor.config_dict['train_average_meter'].get_average(name='speed', avg_mode='sum'))
 
+            # add grad norm
+            if 'grad_norm' in executor.config_dict:
+                log_str += ', grad_norm:{:.2f}'.format(executor.config_dict['grad_norm'])
+
             # add loss
             loss_names = [name for name in executor.config_dict['train_average_meter'].get_all_names() if 'loss' in name]  # loss names are selected by checking the substring 'loss'
             for loss_name in loss_names:

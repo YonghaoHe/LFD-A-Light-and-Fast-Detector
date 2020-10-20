@@ -73,7 +73,8 @@ class Executor(object):
         self._register_hook(lr_scheduler_hook, 'NORMAL')
 
     def _register_optimizer_hook(self):
-        optimizer_hook = OptimizerHook()
+        optimizer_grad_clip_cfg = self.config_dict.get('optimizer_grad_clip_cfg', None)
+        optimizer_hook = OptimizerHook(optimizer_grad_clip_cfg)
         self._register_hook(optimizer_hook, 'NORMAL')
 
     def _register_speed_hook(self):

@@ -7,6 +7,7 @@ from .hook import Hook
 class SpeedHook(Hook):
 
     def __init__(self):
+        super(SpeedHook, self).__init__()
         self._train_start_time = 0
         self._val_start_time = 0
 

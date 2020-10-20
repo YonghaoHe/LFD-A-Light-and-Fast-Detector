@@ -12,6 +12,7 @@ class LrSchedulerHook(Hook):
                  warmup_mode=None,
                  warmup_loops=0,  # to avoid confusion, we use 'loops' instead of 'iters'
                  warmup_ratio=0.1):
+        super(LrSchedulerHook, self).__init__()
         # validate the "warmup" argument
         if warmup_mode is not None:
             assert warmup_mode in ['constant', 'linear', 'exp'], '"{}" is not a supported type for warming up, valid types are "constant", "linear" and "exp"'.format(warmup_mode)

@@ -52,7 +52,7 @@ class FCOS(nn.Module):
 
     def get_param_groups_for_optimizer(self):
         """
-        only support bias related configs: bias_lr, bias_weight_decay
+        only support bias related config: bias_lr, bias_weight_decay
         :return:
         """
         if self._param_groups_cfg is not None:

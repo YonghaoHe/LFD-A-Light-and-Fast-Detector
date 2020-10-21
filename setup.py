@@ -64,4 +64,4 @@ if __name__ == '__main__':
     except:
         print('Failed to copy .so files to target folders, please check the files are generated successfully!')
 
-    print('----> build and copy finished.')
+    print('----> build and copy successfully!')

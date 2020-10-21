@@ -448,5 +448,9 @@ class TurboJPEG(object):
         return cast(nda.__array_interface__['data'][0], POINTER(c_ubyte))
 
 
-libturbojpeg_path = os.path.join(os.path.dirname(__file__), 'libs/libturbojpeg.so')
-turbojpeg = TurboJPEG(lib_path=libturbojpeg_path)
+lib_path = os.path.join(os.path.dirname(__file__), 'libs')
+libturtojpeg_path_list = [os.path.join(lib_path, file_name) for file_name in os.listdir(lib_path) if file_name.lower().startswith('libturbojpeg')]
+
+# multiple paths may be got, choose the one with the longest chars
+target_libturbojpeg_path = max(libturtojpeg_path_list)
+turbojpeg = TurboJPEG(lib_path=target_libturbojpeg_path)

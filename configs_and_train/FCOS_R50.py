@@ -14,6 +14,7 @@ from data_pipeline.dataset import Dataset
 from data_pipeline.sampler import *
 from data_pipeline.augmentation import *
 from evaluation import COCOEvaluator
+from execution.executor import Executor
 
 assert torch.cuda.is_available(), 'GPU training supported only!'
 
@@ -26,7 +27,7 @@ config_dict['timestamp'] = time.strftime('%Y%m%d_%H%M%S', time.localtime())
 config_dict['work_dir'] = './' + os.path.basename(__file__).split('.')[0] + '_work_dir_' + config_dict['timestamp']
 
 # log file path
-config_dict['log_path'] = os.path.join(config_dict['work_dir'], os.path.basename(__file__).split('.')[0] + '_' + config_dict['timestamp'] + '.log')
+config_dict['log_path'] = os.path.join(config_dict['work_dir'], 'log_' + config_dict['timestamp'] + '.log')
 
 # training epochs
 config_dict['training_epochs'] = 12
@@ -35,7 +36,7 @@ config_dict['training_epochs'] = 12
 config_dict['batch_size'] = 2
 
 # reproductive
-config_dict['seed'] = 666
+config_dict['seed'] = None
 config_dict['cudnn_benchmark'] = True
 if config_dict['seed'] is not None:
     set_random_seed(config_dict['seed'])
@@ -67,7 +68,7 @@ config_dict['num_train_workers'] = 4
 config_dict['num_val_workers'] = 2
 
 # construct train data_loader
-train_dataset_path = os.path.join(os.path.dirname(__file__), '..', 'data_pipeline/pack/mini_coco_trainval2017.pkl')
+train_dataset_path = ''
 train_dataset = Dataset(load_path=train_dataset_path)
 train_dataset_sampler = RandomDatasetSampler(index_annotation_dict=train_dataset.index_annotation_dict,
                                              batch_size=config_dict['batch_size'],
@@ -82,7 +83,7 @@ config_dict['train_data_loader'] = DataLoader(dataset=train_dataset,
                                               num_workers=config_dict['num_train_workers'])
 
 # construct val data_loader
-val_dataset_path = os.path.join(os.path.dirname(__file__), '..', 'data_pipeline/pack/mini_coco_trainval2017.pkl')
+val_dataset_path = ''
 val_dataset = Dataset(load_path=val_dataset_path)
 val_dataset_sampler = RandomDatasetSampler(index_annotation_dict=val_dataset.index_annotation_dict,
                                            batch_size=config_dict['batch_size'],
@@ -172,7 +173,8 @@ config_dict['resume_path'] = None
 
 # evaluator
 # the evaluator should match the dataset
-config_dict['evaluator'] = COCOEvaluator(annotation_path=os.path.join(os.path.dirname(__file__), '../datasets/coco/instances_val2017.json'),
+val_annotation_path = ''
+config_dict['evaluator'] = COCOEvaluator(annotation_path=val_annotation_path,
                                          label_indexes_to_category_ids=val_dataset.meta_info[1])
 
 '''
@@ -202,3 +204,7 @@ config_dict['warmup_setting'] = dict(by_epoch=False,
                                      warmup_ratio=0.1)
 assert isinstance(config_dict['warmup_setting'], dict) and 'by_epoch' in config_dict['warmup_setting'] and 'warmup_mode' in config_dict['warmup_setting'] \
        and 'warmup_loops' in config_dict['warmup_setting'] and 'warmup_ratio' in config_dict['warmup_setting']
+
+training_executor = Executor(config_dict)
+
+training_executor.run()

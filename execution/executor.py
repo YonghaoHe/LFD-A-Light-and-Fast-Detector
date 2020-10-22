@@ -37,7 +37,7 @@ class Executor(object):
             self.load()
 
         # use DataParallel to wrap the model
-        self.config_dict['model'] = DataParallel(self.config_dict['model'], device_ids=self.config_dict['gpu_list']).cuda()
+        self.config_dict['model'] = DataParallel(self.config_dict['model'], device_ids=self.config_dict['gpu_list']).cuda(torch.device('cuda', self.config_dict['gpu_list'][0]))
 
         # register hooks
         self._hooks = list()

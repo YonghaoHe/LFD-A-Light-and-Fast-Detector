@@ -7,11 +7,10 @@ from ..dataset.coco_parser import COCOParser
 from ..dataset.dataset import Dataset
 
 
-def pack(image_root_path, annotation_path, pack_save_path, mode='train'):
+def pack(image_root_path, annotation_path, pack_save_path):
     assert os.path.exists(image_root_path), 'image root path does not exist!'
     assert os.path.exists(annotation_path), 'annotation path does not exist!'
     assert pack_save_path.lower().endswith('.pkl'), 'the required suffix is .pkl!'
-    assert mode in ['train', 'val'], 'the valid mode: train, val'
 
     if not os.path.exists(os.path.dirname(pack_save_path)):
         os.makedirs(os.path.dirname(pack_save_path))

@@ -74,8 +74,7 @@ class FCOS(nn.Module):
                 bias_group['lr'] = self._param_groups_cfg['bias_lr']
             if 'bias_weight_decay' in self._param_groups_cfg:
                 bias_group['weight_decay'] = self._param_groups_cfg['bias_weight_decay']
-            param_groups = [bias_group,
-                            dict(params=other_parameters)]
+            param_groups = [dict(params=other_parameters), bias_group]
             return param_groups
         else:
             return self.parameters()

@@ -147,11 +147,12 @@ centerness_loss = CrossEntropyLoss(use_sigmoid=True,
                                    reduction='mean',
                                    loss_weight=1.0)
 
+config_dict['bias_lr_cfg'] = dict(bias_lr=0.02, bias_weight_decay=0.)
 config_dict['model'] = FCOS(backbone=fcos_backbone,
                             neck=fcos_neck,
                             head=fcos_head,
                             num_classes=config_dict['num_classes'],
-                            regress_ranges=((0, 64), (64, 128), (128, 256), (256, 512), (512, 800)),
+                            regress_ranges=((0, 64), (64, 128), (128, 256), (256, 512), (512, 10000)),
                             point_strides=fcos_neck.num_output_strides_list,
                             classification_loss_func=classifiation_loss,
                             regression_loss_func=regression_loss,
@@ -160,7 +161,7 @@ config_dict['model'] = FCOS(backbone=fcos_backbone,
                             nms_threshold=0.5,
                             pre_nms_bbox_limit=1000,
                             post_nms_bbox_limit=100,
-                            param_groups_cfg=dict(bias_lr=0.02, bias_weight_decay=0.)
+                            param_groups_cfg=config_dict['bias_lr_cfg']
                             )
 
 # init param weights file
@@ -191,11 +192,12 @@ config_dict['optimizer'] = torch.optim.SGD(params=config_dict['model'].get_param
 config_dict['optimizer_grad_clip_cfg'] = dict(max_norm=35, norm_type=2)
 
 # multi step lr scheduler is used here
-milestones = [8, 11]
-assert max(milestones) < config_dict['training_epochs'], 'the max value in milestones should be less than total epochs!'
+config_dict['milestones'] = [8, 11]
+config_dict['gamma'] = 0.1
+assert max(config_dict['milestones']) < config_dict['training_epochs'], 'the max value in milestones should be less than total epochs!'
 config_dict['lr_scheduler'] = torch.optim.lr_scheduler.MultiStepLR(config_dict['optimizer'],
-                                                                   milestones=milestones,
-                                                                   gamma=0.1)  # scheduler 也需要被保存在checkpoint中
+                                                                   milestones=config_dict['milestones'],
+                                                                   gamma=config_dict['gamma'])  # scheduler 也需要被保存在checkpoint中
 
 # add warmup parameters
 config_dict['warmup_setting'] = dict(by_epoch=False,

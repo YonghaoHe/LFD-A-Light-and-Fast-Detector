@@ -28,6 +28,8 @@ config_dict['timestamp'] = time.strftime('%Y%m%d_%H%M%S', time.localtime())
 config_dict['work_dir'] = './' + os.path.basename(__file__).split('.')[0] + '_work_dir_' + config_dict['timestamp']
 
 # copy current config file to work dir for backup
+if not os.path.exists(config_dict['work_dir']):
+    os.makedirs(config_dict['work_dir'])
 shutil.copyfile(__file__, os.path.join(config_dict['work_dir'], os.path.basename(__file__)))
 
 # log file path

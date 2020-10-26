@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import shutil
 import os
 import time
 import torch
@@ -25,6 +26,9 @@ config_dict = dict()
 # work directory (saving log and model weights)
 config_dict['timestamp'] = time.strftime('%Y%m%d_%H%M%S', time.localtime())
 config_dict['work_dir'] = './' + os.path.basename(__file__).split('.')[0] + '_work_dir_' + config_dict['timestamp']
+
+# copy current config file to work dir for backup
+shutil.copyfile(__file__, os.path.join(config_dict['work_dir'], os.path.basename(__file__)))
 
 # log file path
 config_dict['log_path'] = os.path.join(config_dict['work_dir'], 'log_' + config_dict['timestamp'] + '.log')
@@ -68,8 +72,8 @@ config_dict['num_train_workers'] = 4
 config_dict['num_val_workers'] = 2
 
 # construct train data_loader
-train_dataset_path = ''
-train_dataset = Dataset(load_path=train_dataset_path)
+config_dict['train_dataset_path'] = 'xxxxxxxxx'
+train_dataset = Dataset(load_path=config_dict['train_dataset_path'])
 train_dataset_sampler = RandomDatasetSampler(index_annotation_dict=train_dataset.index_annotation_dict,
                                              batch_size=config_dict['batch_size'],
                                              shuffle=True,
@@ -83,8 +87,8 @@ config_dict['train_data_loader'] = DataLoader(dataset=train_dataset,
                                               num_workers=config_dict['num_train_workers'])
 
 # construct val data_loader
-val_dataset_path = ''
-val_dataset = Dataset(load_path=val_dataset_path)
+config_dict['val_dataset_path'] = 'xxxxxxxxxx'
+val_dataset = Dataset(load_path=config_dict['val_dataset_path'])
 val_dataset_sampler = RandomDatasetSampler(index_annotation_dict=val_dataset.index_annotation_dict,
                                            batch_size=config_dict['batch_size'],
                                            shuffle=False,
@@ -102,7 +106,7 @@ build model --------------------------------------------------------------------
 '''
 # number of classes
 config_dict['num_classes'] = 80
-backbone_init_param_file_path = os.path.join(os.path.dirname(__file__), '..', 'model/backbone/pretrained_backbone_weights', 'resnet50_caffe.pth')  # if no pretrained weights, set to None
+config_dict['backbone_init_param_file_path'] = os.path.join(os.path.dirname(__file__), '..', 'model/backbone/pretrained_backbone_weights', 'resnet50_caffe.pth')  # if no pretrained weights, set to None
 fcos_backbone = ResNet(depth=50,
                        in_channels=config_dict['num_input_channels'],
                        base_channels=64,
@@ -115,7 +119,7 @@ fcos_backbone = ResNet(depth=50,
                        dcn=None,
                        stage_with_dcn=(False, False, False, False),
                        zero_init_residual=True,
-                       init_with_weight_file=backbone_init_param_file_path)
+                       init_with_weight_file=config_dict['backbone_init_param_file_path'])
 
 fcos_neck = FPN(num_input_channels_list=fcos_backbone.num_output_channels_list,
                 num_input_strides_list=fcos_backbone.num_output_strides_list,
@@ -202,7 +206,7 @@ config_dict['lr_scheduler'] = torch.optim.lr_scheduler.MultiStepLR(config_dict['
 # add warmup parameters
 config_dict['warmup_setting'] = dict(by_epoch=False,
                                      warmup_mode='linear',  # if no warmup needed, set warmup_mode = None
-                                     warmup_loops=1000,
+                                     warmup_loops=1500,
                                      warmup_ratio=0.1)
 assert isinstance(config_dict['warmup_setting'], dict) and 'by_epoch' in config_dict['warmup_setting'] and 'warmup_mode' in config_dict['warmup_setting'] \
        and 'warmup_loops' in config_dict['warmup_setting'] and 'warmup_ratio' in config_dict['warmup_setting']

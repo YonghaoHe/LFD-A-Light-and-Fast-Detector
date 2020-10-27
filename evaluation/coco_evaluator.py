@@ -25,6 +25,7 @@ class COCOEvaluator(Evaluator):
         self._coco_gt = COCO(annotation_path)
         self._label_indexes_to_category_ids = label_indexes_to_category_ids
         self._detection_results = list()
+        self._image_ids = set()
         self._eval_display_str = ''
 
     def update(self, results):
@@ -50,6 +51,7 @@ class COCOEvaluator(Evaluator):
                 predict_item['bbox'] = [max(0, value / resize_scale) for value in predict_bboxes_single[j][2:]]
                 predict_item['score'] = predict_bboxes_single[j][1]
                 predict_item['category_id'] = self._label_indexes_to_category_ids[predict_bboxes_single[j][0]]
+                self._image_ids.add(image_id)
                 self._detection_results.append(predict_item)
 
     def evaluate(self):
@@ -61,6 +63,9 @@ class COCOEvaluator(Evaluator):
         coco_predict = self._coco_gt.loadRes(self._detection_results)
 
         coco_eval = COCOeval(self._coco_gt, coco_predict, iouType='bbox')
+
+        coco_eval.params.imgIds = list(self._image_ids)
+        coco_eval.params.maxDets = [100, 300, 1000]
 
         coco_eval.evaluate()
         coco_eval.accumulate()

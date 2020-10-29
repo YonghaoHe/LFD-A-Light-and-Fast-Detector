@@ -2,7 +2,7 @@
 
 import torch
 import torch.nn as nn
-from .utils import batched_nms
+from .utils import multiclass_nms, batched_nms
 
 __all__ = ['FCOS']
 
@@ -326,87 +326,94 @@ class FCOS(nn.Module):
 
     def get_results(self, predict_outputs, *args):
         """
-        obtain bboxes from predicted feature maps
+        get predicted bboxes from output feature maps
         :param predict_outputs:
         :param args:
         :return:
         """
 
-        def get_results_for_single_image(func_predict_classification,
-                                         func_predict_regression,
-                                         func_predict_centerness,
-                                         func_concat_point_coordinates):
-            func_predict_classification = func_predict_classification.sigmoid()
-            func_predict_centerness = func_predict_centerness.squeeze().sigmoid()
-
-            class_max_score, class_max_index = func_predict_classification.max(dim=-1)
-
-            # apply pre nms bbox limit
-            if 0 < self._pre_nms_bbox_limit < class_max_score.size(0):
-                _, top_indexes = class_max_score.topk(self._pre_nms_bbox_limit)
-                class_max_score = class_max_score[top_indexes]
-                class_max_index = class_max_index[top_indexes]
-                func_predict_regression = func_predict_regression[top_indexes]
-                func_predict_centerness = func_predict_centerness[top_indexes]
-                func_concat_point_coordinates = func_concat_point_coordinates[top_indexes]
-
-            selected = class_max_score > self._classification_threshold
-            if selected.sum() == 0:
-                return torch.empty((0, 4), dtype=torch.float32), \
-                       torch.empty((0,), dtype=torch.float32), \
-                       torch.empty((0,), dtype=torch.int64)
-
-            # apply centerness to classification scores
-            class_max_score = class_max_score * func_predict_centerness
-            class_scores = class_max_score[selected]
-            class_indexes = class_max_index[selected]
-
-            # calculate coordinates
-            func_predict_regression = func_predict_regression[selected]
-            func_concat_point_coordinates = func_concat_point_coordinates[selected]
-            bboxes = self.distance2bbox(func_concat_point_coordinates, func_predict_regression)
-            valid_indicator = (bboxes[:, 2] > bboxes[:, 0]) & (bboxes[:, 3] > bboxes[:, 1])
-
-            bboxes = bboxes[valid_indicator]
-            class_scores = class_scores[valid_indicator]
-            class_indexes = class_indexes[valid_indicator]
-
-            return bboxes, class_scores, class_indexes
-
         predict_classification_tensor, predict_regress_tensor, predict_centerness_tensor = predict_outputs
         num_samples = predict_classification_tensor.size(0)
         all_point_coordinates_list = self.generate_point_coordinates(self._head_indexes_to_feature_map_sizes)
-        concat_point_coordinates = torch.cat(all_point_coordinates_list, dim=0)
-        concat_point_coordinates = concat_point_coordinates.to(predict_classification_tensor.device)
+
+        # concat_point_coordinates = torch.cat(all_point_coordinates_list, dim=0)
+        # concat_point_coordinates = concat_point_coordinates.to(predict_classification_tensor.device)
 
         results = []
         for i in range(num_samples):
-            temp_bboxes, temp_class_scores, temp_class_indexes = get_results_for_single_image(predict_classification_tensor[i],
-                                                                                              predict_regress_tensor[i],
-                                                                                              predict_centerness_tensor[i],
-                                                                                              concat_point_coordinates)
+            nms_bboxes, nms_labels = self._get_results_for_single_image(predict_classification_tensor[i],
+                                                                        predict_regress_tensor[i],
+                                                                        predict_centerness_tensor[i],
+                                                                        all_point_coordinates_list)
 
             # if empty, append []
-            if temp_bboxes.size(0) == 0:
+            if nms_bboxes.size(0) == 0:
                 results.append([])
                 continue
 
-            # perform nms
-            bboxes_nms, keep = batched_nms(temp_bboxes, temp_class_scores, temp_class_indexes, self._nms_cfg)
-            if 0 < self._post_nms_bbox_limit < bboxes_nms.size(0):
-                bboxes_nms = bboxes_nms[:self._post_nms_bbox_limit]
-                keep = keep[:self._post_nms_bbox_limit]
-
             # [x1, y1, x2, y2, score] -> [x1, y1, w, h, score]
-            bboxes_nms[:, 2] = bboxes_nms[:, 2] - bboxes_nms[:, 0] + 1
-            bboxes_nms[:, 3] = bboxes_nms[:, 3] - bboxes_nms[:, 1] + 1
-            temp_results = torch.cat([temp_class_indexes[keep][:, None].to(bboxes_nms), bboxes_nms[:, [4, 0, 1, 2, 3]]], dim=1)  # each row : [class_label, score, x1, y1, w, h]
+            nms_bboxes[:, 2] = nms_bboxes[:, 2] - nms_bboxes[:, 0] + 1
+            nms_bboxes[:, 3] = nms_bboxes[:, 3] - nms_bboxes[:, 1] + 1
+            temp_results = torch.cat([nms_labels[:, None].to(nms_bboxes), nms_bboxes[:, [4, 0, 1, 2, 3]]], dim=1)  # each row : [class_label, score, x1, y1, w, h]
             # from tensor to list
             temp_results = temp_results.tolist()
             temp_results = [[int(temp_result[0])] + temp_result[1:] for temp_result in temp_results]
 
             results.append(temp_results)
         return results
+
+    def _get_results_for_single_image(self,
+                                      predicted_classification,
+                                      predicted_regression,
+                                      predicted_centerness,
+                                      all_point_coordinates_list):
+        # 还需要加上图像长宽的限制
+        split_list = [point_coordinates_per_level.size(0) for point_coordinates_per_level in all_point_coordinates_list]
+        predicted_classification_split = predicted_classification.split(split_list, dim=0)
+        predicted_regression_split = predicted_regression.split(split_list, dim=0)
+        predicted_centerness_split = predicted_centerness.split(split_list, dim=0)
+
+        predicted_classification_merge = list()
+        predicted_bboxes_merge = list()
+        predicted_centerness_merge = list()
+
+        for i in range(len(split_list)):
+            temp_predicted_classification = predicted_classification_split[i].sigmoid()
+            temp_predicted_centerness = predicted_centerness_split[i].sigmoid()
+            temp_predicted_regression = predicted_regression_split[i]
+            temp_point_coordinates = all_point_coordinates_list[i].to(temp_predicted_regression.device)
+
+            #  apply pre nms bbox limit to each head
+            if 0 < self._pre_nms_bbox_limit < temp_predicted_classification.size(0):
+                temp_max_scores, _ = (temp_predicted_classification * temp_predicted_centerness).max(dim=1)  # sort after centerness mask
+                _, topk_indexes = temp_max_scores.topk(self._pre_nms_bbox_limit)
+                temp_predicted_classification = temp_predicted_classification[topk_indexes]
+                temp_predicted_centerness = temp_predicted_centerness[topk_indexes]
+                temp_predicted_regression = temp_predicted_regression[topk_indexes]
+                temp_point_coordinates = temp_point_coordinates[topk_indexes]
+
+            predicted_classification_merge.append(temp_predicted_classification)
+            predicted_centerness_merge.append(temp_predicted_centerness)
+            predicted_bboxes_merge.append(self.distance2bbox(temp_point_coordinates, temp_predicted_regression))
+
+        predicted_classification_merge = torch.cat(predicted_classification_merge)
+        # add BG label
+        bg_label_padding = predicted_classification_merge.new_zeros(predicted_classification_merge.size(0), 1)
+        predicted_classification_merge = torch.cat([predicted_classification_merge, bg_label_padding], dim=1)
+
+        predicted_bboxes_merge = torch.cat(predicted_bboxes_merge)
+        predicted_centerness_merge = torch.cat(predicted_centerness_merge).squeeze()
+
+        nms_bboxes, nms_labels = multiclass_nms(
+            multi_bboxes=predicted_bboxes_merge,
+            multi_scores=predicted_classification_merge,
+            score_thr=self._classification_threshold,
+            nms_cfg=self._nms_cfg,
+            max_num=self._post_nms_bbox_limit,
+            score_factors=predicted_centerness_merge
+        )
+
+        return nms_bboxes, nms_labels
 
     def forward(self, x):
 

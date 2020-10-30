@@ -9,6 +9,7 @@
 import random
 import numpy
 import cv2
+
 __all__ = ['TypicalCOCOTrainingRegionSampler', 'BaseRegionSampler']
 
 
@@ -69,13 +70,13 @@ class TypicalCOCOTrainingRegionSampler(BaseRegionSampler):
         im = sample['image']
         im_height, im_width = im.shape[0], im.shape[1]
         shorter_target = random.randint(self._resize_shorter_min, self._resize_shorter_max)
-        resize_scale = min(self._resize_longer_limit/max(im_height, im_width), shorter_target/min(im_height, im_width))
+        resize_scale = min(self._resize_longer_limit / max(im_height, im_width), shorter_target / min(im_height, im_width))
 
         im_resized = cv2.resize(im, (0, 0), fx=resize_scale, fy=resize_scale)
         if 'bboxes' in sample:
             bboxes = sample['bboxes']
             # 这里需要保证新的bbox长宽大于等于1，并且bbox的范围不能超过图像的边界（让x，y向下取整）
-            bboxes_resized = [[int(bbox[0]*resize_scale), int(bbox[1]*resize_scale), max(bbox[2]*resize_scale, 1), max(bbox[3]*resize_scale, 1)]
+            bboxes_resized = [[int(bbox[0] * resize_scale), int(bbox[1] * resize_scale), max(bbox[2] * resize_scale, 1), max(bbox[3] * resize_scale, 1)]
                               for bbox in bboxes]
             sample['bboxes'] = bboxes_resized
 
@@ -85,6 +86,8 @@ class TypicalCOCOTrainingRegionSampler(BaseRegionSampler):
 
         sample['image'] = im_resized
         sample['resize_scale'] = resize_scale  # 'resize_scale' will be used as meta info by evaluator
+        sample['resized_height'] = int(im_height * resize_scale)
+        sample['resized_width'] = int(im_width * resize_scale)
 
         return sample
 

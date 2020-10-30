@@ -42,13 +42,12 @@ class COCOEvaluator(Evaluator):
         for i in range(len(meta_batch)):
             meta_single = meta_batch[i]
             image_id = meta_single['image_id']
-            resize_scale = meta_single['resize_scale']
 
             predict_bboxes_single = predict_bboxes[i]
             for j in range(len(predict_bboxes_single)):
                 predict_item = dict()
                 predict_item['image_id'] = image_id
-                predict_item['bbox'] = [max(0, value / resize_scale) for value in predict_bboxes_single[j][2:]]
+                predict_item['bbox'] = predict_bboxes_single[j][2:]
                 predict_item['score'] = predict_bboxes_single[j][1]
                 predict_item['category_id'] = self._label_indexes_to_category_ids[predict_bboxes_single[j][0]]
                 self._image_ids.add(image_id)

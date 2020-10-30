@@ -372,8 +372,8 @@ class FCOS(nn.Module):
         predicted_classification_split = predicted_classification.split(split_list, dim=0)
         predicted_regression_split = predicted_regression.split(split_list, dim=0)
         predicted_centerness_split = predicted_centerness.split(split_list, dim=0)
-        image_height = meta_info['height']
-        image_width = meta_info['width']
+        image_resized_height = meta_info['resized_height']
+        image_resized_width = meta_info['resized_width']
 
         predicted_classification_merge = list()
         predicted_bboxes_merge = list()
@@ -396,7 +396,7 @@ class FCOS(nn.Module):
 
             predicted_classification_merge.append(temp_predicted_classification)
             predicted_centerness_merge.append(temp_predicted_centerness)
-            predicted_bboxes_merge.append(self.distance2bbox(temp_point_coordinates, temp_predicted_regression, max_shape=(image_height, image_width)))
+            predicted_bboxes_merge.append(self.distance2bbox(temp_point_coordinates, temp_predicted_regression, max_shape=(image_resized_height, image_resized_width)))
 
         predicted_classification_merge = torch.cat(predicted_classification_merge)
         # add BG label
@@ -404,6 +404,8 @@ class FCOS(nn.Module):
         predicted_classification_merge = torch.cat([predicted_classification_merge, bg_label_padding], dim=1)
 
         predicted_bboxes_merge = torch.cat(predicted_bboxes_merge)
+        # change to original sizes
+        predicted_bboxes_merge = predicted_bboxes_merge/meta_info['resize_scale']
         predicted_centerness_merge = torch.cat(predicted_centerness_merge).squeeze()
 
         nms_bboxes, nms_labels = multiclass_nms(

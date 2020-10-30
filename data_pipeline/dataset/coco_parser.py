@@ -77,6 +77,8 @@ class COCOParser(object):
             sample['image_id'] = image_id  # image_id is not in the Sample key words, and serves as the meta info for COCO samples. It will be used by evaluator.
             sample['image_path'] = os.path.join(self._image_root, image_info[0]['file_name'])
             sample['image_type'] = image_info[0]['file_name'].split('.')[-1].lower()
+            sample['height'] = image_info[0]['height']
+            sample['width'] = image_info[0]['width']
             if len(bboxes) > 0:
                 sample['bboxes'] = bboxes
                 sample['bbox_labels'] = [self._category_ids_to_label_indexes[bbox_cat_id] for bbox_cat_id in bbox_category_ids]

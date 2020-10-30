@@ -335,16 +335,15 @@ class FCOS(nn.Module):
         predict_classification_tensor, predict_regress_tensor, predict_centerness_tensor = predict_outputs
         num_samples = predict_classification_tensor.size(0)
         all_point_coordinates_list = self.generate_point_coordinates(self._head_indexes_to_feature_map_sizes)
-
-        # concat_point_coordinates = torch.cat(all_point_coordinates_list, dim=0)
-        # concat_point_coordinates = concat_point_coordinates.to(predict_classification_tensor.device)
+        meta_batch = args[0]
 
         results = []
         for i in range(num_samples):
             nms_bboxes, nms_labels = self._get_results_for_single_image(predict_classification_tensor[i],
                                                                         predict_regress_tensor[i],
                                                                         predict_centerness_tensor[i],
-                                                                        all_point_coordinates_list)
+                                                                        all_point_coordinates_list,
+                                                                        meta_batch[i])
 
             # if empty, append []
             if nms_bboxes.size(0) == 0:
@@ -366,12 +365,15 @@ class FCOS(nn.Module):
                                       predicted_classification,
                                       predicted_regression,
                                       predicted_centerness,
-                                      all_point_coordinates_list):
-        # 还需要加上图像长宽的限制
+                                      all_point_coordinates_list,
+                                      meta_info):
+        # 还需要加上图像长宽的限制，同时把bbox的尺度改变也纳入到这里
         split_list = [point_coordinates_per_level.size(0) for point_coordinates_per_level in all_point_coordinates_list]
         predicted_classification_split = predicted_classification.split(split_list, dim=0)
         predicted_regression_split = predicted_regression.split(split_list, dim=0)
         predicted_centerness_split = predicted_centerness.split(split_list, dim=0)
+        image_height = meta_info['height']
+        image_width = meta_info['width']
 
         predicted_classification_merge = list()
         predicted_bboxes_merge = list()
@@ -394,7 +396,7 @@ class FCOS(nn.Module):
 
             predicted_classification_merge.append(temp_predicted_classification)
             predicted_centerness_merge.append(temp_predicted_centerness)
-            predicted_bboxes_merge.append(self.distance2bbox(temp_point_coordinates, temp_predicted_regression))
+            predicted_bboxes_merge.append(self.distance2bbox(temp_point_coordinates, temp_predicted_regression, max_shape=(image_height, image_width)))
 
         predicted_classification_merge = torch.cat(predicted_classification_merge)
         # add BG label

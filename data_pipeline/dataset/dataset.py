@@ -40,27 +40,21 @@ class Dataset(object):
             os.makedirs(os.path.dirname(self._save_path))
 
         self._dataset = dict()
-        self._index_annotation_dict = dict()
-        self._meta_info = [self._parser.category_ids_to_label_indexes, self._parser.label_indexes_to_category_ids, self._parser.category_idx_to_category_names]
+        self._meta_info = self._parser.get_meta_info()
 
         for index, sample in enumerate(self._parser.generate_sample()):
-            if 'bboxes' in sample:
-                self._index_annotation_dict[index] = (sample['bboxes'], sample['bbox_labels'])
-            else:
-                self._index_annotation_dict[index] = None
             self._dataset[index] = sample
-
             print('Sample [%d] is processed.' % index)
 
         print('Save dataset ' + '-' * 20)
-        pickle.dump([self._meta_info, self._index_annotation_dict, self._dataset], open(self._save_path, 'wb'), pickle.HIGHEST_PROTOCOL)
+        pickle.dump([self._meta_info, self._dataset], open(self._save_path, 'wb'), pickle.HIGHEST_PROTOCOL)
 
     def __load_dataset(self):
         """
         load dataset
         :return:
         """
-        self._meta_info, self._index_annotation_dict, self._dataset = pickle.load(open(self._load_path, 'rb'))
+        self._meta_info, self._dataset = pickle.load(open(self._load_path, 'rb'))
 
     def __getitem__(self, index):
         """
@@ -74,17 +68,13 @@ class Dataset(object):
         """
         :return:
         """
-        return len(self._index_annotation_dict)
+        return len(self._dataset)
 
     def __str__(self):
         return self.get_dataset_statistics()
 
-    @property
-    def index_annotation_dict(self):
-        """
-        :return:
-        """
-        return self._index_annotation_dict
+    def get_indexes(self):
+        return list(self._dataset.keys())
 
     @property
     def meta_info(self):
@@ -94,25 +84,25 @@ class Dataset(object):
         """
         :return:
         """
-        num_samples_with_bbox = 0
+        num_samples_with_bboxes = 0
         temp_label_bboxes_dict = dict()
-        for index, annotation in self._index_annotation_dict.items():
-            if annotation is None:
+        for index, sample in self._dataset.items():
+            if 'bboxes' not in sample:
                 continue
-            bboxes, labels = annotation
+            bboxes, labels = sample['bboxes'], sample['bbox_labels']
             for i, label in enumerate(labels):
                 if label in temp_label_bboxes_dict:
                     temp_label_bboxes_dict[label] += 1
                 else:
                     temp_label_bboxes_dict[label] = 1
-            num_samples_with_bbox += 1
+            num_samples_with_bboxes += 1
 
         statistics = 'Dataset statistics:--------------\n' \
                      'The total number of samples: %d\n' \
                      'The total number of classes: %d\n' \
                      'The total number of bboxes: %d\n' \
                      'The total number of neg samples: %d\n' \
-                     % (self.__len__(), len(temp_label_bboxes_dict.keys()), sum(temp_label_bboxes_dict.values()), self.__len__() - num_samples_with_bbox)
+                     % (self.__len__(), len(temp_label_bboxes_dict.keys()), sum(temp_label_bboxes_dict.values()), self.__len__() - num_samples_with_bboxes)
         statistics += 'For each class:\n'
         for label, num_bboxes in temp_label_bboxes_dict.items():
             statistics += 'class {:>3} includes {:>9} bboxes\n'.format(label, num_bboxes)

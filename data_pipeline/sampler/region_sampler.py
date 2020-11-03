@@ -6,11 +6,12 @@
 模块文件: region_sampler.py
 模块描述: 
 """
+import math
 import random
 import numpy
 import cv2
 
-__all__ = ['TypicalCOCOTrainingRegionSampler', 'BaseRegionSampler']
+__all__ = ['BaseRegionSampler', 'TypicalCOCOTrainingRegionSampler']
 
 
 class BaseRegionSampler(object):
@@ -26,20 +27,6 @@ class BaseRegionSampler(object):
         """
         raise NotImplementedError
 
-    def num_regions(self):
-        """
-        how many regions will be yield within a single sample
-        :return:
-        """
-        raise NotImplementedError
-
-    def output_size(self):
-        """
-        the region size
-        :return:
-        """
-        raise NotImplementedError
-
 
 class TypicalCOCOTrainingRegionSampler(BaseRegionSampler):
     """
@@ -48,22 +35,17 @@ class TypicalCOCOTrainingRegionSampler(BaseRegionSampler):
     2) the default output region size is (h, w) = (1333, 1333), make sure to contain all the cases
     """
 
-    def __init__(self, output_size=(1333, 1333), resize_shorter_range=(800,), resize_longer_limit=1333, ):
+    def __init__(self, resize_shorter_range=(800,), resize_longer_limit=1333, pad_divisor=32):
         """
 
-        :param output_size: h, w
-        :param resize_limits:
         """
         assert isinstance(resize_shorter_range, tuple)
         assert max(resize_shorter_range) <= resize_longer_limit
-        self._output_size = output_size
+        assert pad_divisor > 0
+        self._pad_divisor = pad_divisor
         self._resize_shorter_min = min(resize_shorter_range)
         self._resize_shorter_max = max(resize_shorter_range)
         self._resize_longer_limit = resize_longer_limit
-
-    @property
-    def num_regions(self):
-        return 1
 
     def __call__(self, sample):
         assert 'image' in sample
@@ -76,24 +58,22 @@ class TypicalCOCOTrainingRegionSampler(BaseRegionSampler):
         if 'bboxes' in sample:
             bboxes = sample['bboxes']
             # 这里需要保证新的bbox长宽大于等于1，并且bbox的范围不能超过图像的边界（让x，y向下取整）
-            bboxes_resized = [[int(bbox[0] * resize_scale), int(bbox[1] * resize_scale), max(bbox[2] * resize_scale, 1), max(bbox[3] * resize_scale, 1)]
+            bboxes_resized = [[int(bbox[0] * resize_scale), int(bbox[1] * resize_scale), max(int(bbox[2] * resize_scale), 1), max(int(bbox[3] * resize_scale), 1)]
                               for bbox in bboxes]
             sample['bboxes'] = bboxes_resized
 
         # 将缩放后的图像放入输入大小的左上角。 这里采用了crop的方式。
-        crop_region = [0, 0, self._output_size[1], self._output_size[0]]
+        target_height = math.ceil(im_resized.shape[0] / self._pad_divisor) * self._pad_divisor
+        target_width = math.ceil(im_resized.shape[1] / self._pad_divisor) * self._pad_divisor
+        crop_region = [0, 0, target_width, target_height]
         im_resized = crop_from_image(im_resized, crop_region)
 
         sample['image'] = im_resized
-        sample['resize_scale'] = resize_scale  # 'resize_scale' will be used as meta info by evaluator
+        sample['resize_scale'] = resize_scale
         sample['resized_height'] = int(im_height * resize_scale)
         sample['resized_width'] = int(im_width * resize_scale)
 
         return sample
-
-    @property
-    def output_size(self):
-        return self._output_size
 
 
 def crop_from_image(image, crop_region):

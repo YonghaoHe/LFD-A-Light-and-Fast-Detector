@@ -42,7 +42,7 @@ config_dict['training_epochs'] = 12
 config_dict['batch_size'] = 2
 
 # reproductive
-config_dict['seed'] = None
+config_dict['seed'] = 1
 config_dict['cudnn_benchmark'] = True
 if config_dict['seed'] is not None:
     set_random_seed(config_dict['seed'])
@@ -53,10 +53,10 @@ config_dict['gpu_list'] = [0]
 assert isinstance(config_dict['gpu_list'], list)
 
 # display interval in iterations
-config_dict['display_interval'] = 2
+config_dict['display_interval'] = 10
 
 # checkpoint save interval in epochs
-config_dict['save_interval'] = 10
+config_dict['save_interval'] = 12
 
 # validation interval in epochs
 config_dict['val_interval'] = 1
@@ -76,31 +76,28 @@ config_dict['num_val_workers'] = 2
 # construct train data_loader
 config_dict['train_dataset_path'] = 'xxxxxxxxx'
 train_dataset = Dataset(load_path=config_dict['train_dataset_path'])
-train_dataset_sampler = RandomDatasetSampler(index_annotation_dict=train_dataset.index_annotation_dict,
-                                             batch_size=config_dict['batch_size'],
-                                             shuffle=True,
-                                             ignore_last=False)
-train_region_sampler = TypicalCOCOTrainingRegionSampler(output_size=(1333, 1333), resize_shorter_range=(800, ), resize_longer_limit=1333)
+train_dataset_sampler = COCORandomDatasetSampler(dataset=train_dataset,
+                                                 batch_size=config_dict['batch_size'],
+                                                 shuffle=True, )
+train_region_sampler = TypicalCOCOTrainingRegionSampler(resize_shorter_range=(800,), resize_longer_limit=1333, pad_divisor=32)
 config_dict['train_data_loader'] = DataLoader(dataset=train_dataset,
                                               dataset_sampler=train_dataset_sampler,
                                               region_sampler=train_region_sampler,
                                               augmentation_pipeline=typical_coco_train_pipeline,
-                                              num_input_channels=config_dict['num_input_channels'],
                                               num_workers=config_dict['num_train_workers'])
 
 # construct val data_loader
 config_dict['val_dataset_path'] = 'xxxxxxxxxx'
 val_dataset = Dataset(load_path=config_dict['val_dataset_path'])
-val_dataset_sampler = RandomDatasetSampler(index_annotation_dict=val_dataset.index_annotation_dict,
+val_dataset_sampler = RandomDatasetSampler(dataset=val_dataset,
                                            batch_size=config_dict['batch_size'],
                                            shuffle=False,
                                            ignore_last=False)
-val_region_sampler = TypicalCOCOTrainingRegionSampler(output_size=(1333, 1333), resize_shorter_range=(800, ), resize_longer_limit=1333)
+val_region_sampler = TypicalCOCOTrainingRegionSampler(resize_shorter_range=(800,), resize_longer_limit=1333, pad_divisor=32)
 config_dict['val_data_loader'] = DataLoader(dataset=val_dataset,
                                             dataset_sampler=val_dataset_sampler,
                                             region_sampler=val_region_sampler,
                                             augmentation_pipeline=typical_coco_val_pipeline,
-                                            num_input_channels=config_dict['num_input_channels'],
                                             num_workers=config_dict['num_val_workers'])
 
 '''

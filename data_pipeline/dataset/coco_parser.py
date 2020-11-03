@@ -9,10 +9,11 @@
 import os
 from pycocotools.coco import COCO
 from .sample import Sample
+from .base_parser import Parser
 __all__ = ['COCOParser']
 
 
-class COCOParser(object):
+class COCOParser(Parser):
 
     def __init__(self, coco_annotation_path, image_root, filter_no_gt=True, filter_min_size=32):
         assert os.path.exists(coco_annotation_path)
@@ -35,17 +36,12 @@ class COCOParser(object):
             self._label_indexes_to_category_ids[i] = cat_id
             self._category_ids_to_category_names[cat_id] = self._coco.loadCats(cat_id)[0]['name']
 
-    @property
-    def category_ids_to_label_indexes(self):
-        return self._category_ids_to_label_indexes
-
-    @property
-    def label_indexes_to_category_ids(self):
-        return self._label_indexes_to_category_ids
-
-    @property
-    def category_idx_to_category_names(self):
-        return self._category_ids_to_category_names
+    def get_meta_info(self):
+        return {
+            'category_ids_to_label_indexes': self._category_ids_to_label_indexes,
+            'label_indexes_to_category_ids': self._label_indexes_to_category_ids,
+            'category_ids_to_category_names': self._category_ids_to_category_names
+        }
 
     def generate_sample(self):
         image_ids = self._coco.getImgIds()

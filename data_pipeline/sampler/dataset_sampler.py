@@ -1,11 +1,23 @@
 # -*- coding: utf-8 -*-
 
 import random
+import math
 
-__all__ = ['RandomDatasetSampler']
+__all__ = ['BaseDatasetSampler', 'RandomDatasetSampler', 'COCORandomDatasetSampler']
 
 
-class RandomDatasetSampler(object):
+class BaseDatasetSampler(object):
+    def __iter__(self):
+        raise NotImplementedError
+
+    def __len__(self):
+        raise NotImplementedError
+
+    def get_batch_size(self):
+        raise NotImplementedError
+
+
+class RandomDatasetSampler(BaseDatasetSampler):
     """
     shuffle the whole dataset, and then return sample indexes sequentially
     steps：
@@ -13,17 +25,11 @@ class RandomDatasetSampler(object):
     2) return batched indexes sequentially
     """
 
-    def __init__(self, index_annotation_dict, batch_size=1, shuffle=True, ignore_last=False):
+    def __init__(self, dataset, batch_size=1, shuffle=True, ignore_last=False):
         """
-
-        :param index_annotation_dict: key为sample的索引，value为样本的标签。通常由调用dataset的相关函数获取
-        :param batch_size:
-        :param shuffle: 开始返回前，是否打乱所有的indexes
-        :param ignore_last: 当dataset中的sample个数无法被batch_size整除时，是否返回最后一个batch
         """
-        assert isinstance(index_annotation_dict, dict)
-
-        self._indexes = list(index_annotation_dict.keys())
+        assert len(dataset) > 0
+        self._indexes = dataset.get_indexes()
         self._num_samples = len(self._indexes)
         self._batch_size = batch_size
         self._shuffle = shuffle
@@ -48,6 +54,61 @@ class RandomDatasetSampler(object):
 
     def __len__(self):
         return self._loops
+
+    def get_batch_size(self):
+        return self._batch_size
+
+
+class COCORandomDatasetSampler(BaseDatasetSampler):
+    """
+    group all samples by computing the aspect ratio (w/h > 1, or others)
+    """
+
+    def __init__(self, dataset, batch_size=1, shuffle=True):
+        assert len(dataset) >= 1
+        assert batch_size >= 1
+        indexes = dataset.get_indexes()
+        self._group_indexes = dict()
+        for index in indexes:
+            temp_sample = dataset[index]
+            group_id = int(temp_sample['original_width'] / temp_sample['original_height'] < 1)
+            if group_id in self._group_indexes:
+                self._group_indexes[group_id].append(index)
+            else:
+                self._group_indexes[group_id] = [index]
+
+        assert batch_size <= len(dataset)
+        self._batch_size = batch_size
+        self._shuffle = shuffle
+
+        # pad group indexes
+        num_samples = 0
+        for group_id in self._group_indexes:
+            temp_group_indexes = self._group_indexes[group_id]
+            num_pad = math.ceil(len(temp_group_indexes) / self._batch_size) * self._batch_size - len(temp_group_indexes)
+            temp_group_indexes += random.sample(temp_group_indexes, num_pad)
+            self._group_indexes[group_id] = temp_group_indexes
+            num_samples += len(temp_group_indexes)
+
+        assert num_samples % self._batch_size == 0
+        self._loop = num_samples // self._batch_size
+
+    def __iter__(self):
+        all_index_batches = list()
+        for group_id in self._group_indexes:
+            temp_group_indexes = self._group_indexes[group_id]
+            if self._shuffle:
+                random.shuffle(temp_group_indexes)
+            temp_loop = len(temp_group_indexes) // self._batch_size
+            all_index_batches += [temp_group_indexes[i * self._batch_size:(i + 1) * self._batch_size] for i in range(temp_loop)]
+
+        random.shuffle(all_index_batches)
+
+        for i in range(self._loop):
+            yield all_index_batches[i]
+
+    def __len__(self):
+        return self._loop
 
     def get_batch_size(self):
         return self._batch_size

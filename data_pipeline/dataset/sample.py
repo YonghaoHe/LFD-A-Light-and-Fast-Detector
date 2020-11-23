@@ -5,7 +5,7 @@ __all__ = ['Sample', 'reserved_keys']
 reserved_keys = ['image_bytes', 'image_type', 'image_path', 'image', 'bboxes', 'bbox_labels']
 
 
-class Sample(object):
+class Sample(dict):
     """
     Sample class is for storing required information of a single sample
     Sample works in a dict-like way, and some reserved key wards are defined：
@@ -22,6 +22,7 @@ class Sample(object):
 
         :param sample_dict: predefined sample dict
         """
+        super(Sample, self).__init__()
         if sample_dict is not None:
             assert isinstance(sample_dict, dict)
             self._sample = sample_dict

@@ -11,7 +11,7 @@ import random
 import numpy
 import cv2
 
-__all__ = ['BaseRegionSampler', 'TypicalCOCOTrainingRegionSampler']
+__all__ = ['BaseRegionSampler', 'TypicalCOCOTrainingRegionSampler', 'RandomBBoxCropRegionSampler', 'IdleRegionSampler']
 
 
 class BaseRegionSampler(object):
@@ -72,6 +72,79 @@ class TypicalCOCOTrainingRegionSampler(BaseRegionSampler):
         sample['resize_scale'] = resize_scale
         sample['resized_height'] = int(im_height * resize_scale)
         sample['resized_width'] = int(im_width * resize_scale)
+
+        return sample
+
+
+class RandomBBoxCropRegionSampler(BaseRegionSampler):
+    """
+    workflow:
+    1, randomly resize the image according to resize_range
+    2, (pos sample) randomly select a bbox, randomly choose a region with crop_size ,trying to contain the selected bbox
+       (neg sample) randomly crop a region with crop_size
+    """
+    def __init__(self, crop_size, resize_range=(0.5, 1.5)):
+        assert isinstance(crop_size, int)
+        assert isinstance(resize_range, (tuple, list))
+
+        self._crop_size = crop_size
+        self._resize_range = resize_range
+
+    def __call__(self, sample):
+        assert 'image' in sample
+
+        resize_scale = random.random() * (self._resize_range[1] - self._resize_range[0]) + self._resize_range[0]
+        image = sample['image']
+        image = cv2.resize(image, (0, 0), fx=resize_scale, fy=resize_scale)
+
+        bboxes = sample['bboxes'] if 'bboxes' in sample else []
+        labels = sample['bbox_labels'] if 'bbox_labels' in sample else []
+
+        bboxes = [[int(v * resize_scale) for v in bbox] for bbox in bboxes]
+        target_bbox = random.choice(bboxes) if len(bboxes) > 0 else [0, 0, image.shape[1], image.shape[0]]
+
+        w_range = self._crop_size - target_bbox[2]
+        h_range = self._crop_size - target_bbox[3]
+
+        crop_x = target_bbox[0] - random.randint(min(0, w_range), max(0, w_range))
+        crop_y = target_bbox[1] - random.randint(min(0, h_range), max(0, h_range))
+
+        crop_region = (crop_x, crop_y, self._crop_size, self._crop_size)
+
+        new_bboxes = []
+        new_labels = []
+        for i, bbox in enumerate(bboxes):
+            new_x = max(0, bbox[0] - crop_x)
+            new_y = max(0, bbox[1] - crop_y)
+            new_w = min(self._crop_size, bbox[0] + bbox[2] - crop_x) - new_x
+            new_h = min(self._crop_size, bbox[1] + bbox[3] - crop_y) - new_y
+            if new_w <= 0 or new_x >= self._crop_size or new_h <= 0 or new_y >= self._crop_size:
+                continue
+            new_bboxes.append([new_x, new_y, new_w, new_h])
+            new_labels.append(labels[i])
+
+        sample['image'] = crop_from_image(image, crop_region)
+        if len(new_bboxes) > 0:
+            sample['bboxes'] = new_bboxes
+            sample['bbox_labels'] = new_labels
+
+        return sample
+
+
+class IdleRegionSampler(BaseRegionSampler):
+    """
+    this region sampler does not make any changes to the sample
+    in most cases, it's used for evaluation
+    """
+    def __init__(self):
+        pass
+
+    def __call__(self, sample):
+        assert 'image' in sample
+
+        sample['resize_scale'] = 1.
+        sample['resized_height'] = sample['image'].shape[0]
+        sample['resized_width'] = sample['image'].shape[1]
 
         return sample
 

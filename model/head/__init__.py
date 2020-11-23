@@ -7,3 +7,4 @@
 模块描述: 
 """
 from .fcos_head import FCOSHead
+from .lfd_head import LFDHead

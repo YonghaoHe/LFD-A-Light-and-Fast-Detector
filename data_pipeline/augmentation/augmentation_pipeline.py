@@ -8,7 +8,10 @@
 """
 from albumentations import *
 
-__all__ = ['typical_coco_train_pipeline', 'typical_coco_val_pipeline']
+__all__ = ['typical_coco_train_pipeline',
+           'typical_coco_val_pipeline',
+           'simple_widerface_train_pipeline',
+           'simple_widerface_val_pipeline']
 
 random_horizon_flip = HorizontalFlip(p=0.5)
 
@@ -44,6 +47,20 @@ def typical_coco_train_pipeline(sample):
 
 
 def typical_coco_val_pipeline(sample):
+    if 'bboxes' in sample:
+        return val_pipeline_with_bboxes(**sample)
+    else:
+        return val_pipeline_without_bboxes(**sample)
+
+
+def simple_widerface_train_pipeline(sample):
+    if 'bboxes' in sample:
+        return train_pipeline_with_bboxes(**sample)
+    else:
+        return train_pipeline_without_bboxes(**sample)
+
+
+def simple_widerface_val_pipeline(sample):
     if 'bboxes' in sample:
         return val_pipeline_with_bboxes(**sample)
     else:

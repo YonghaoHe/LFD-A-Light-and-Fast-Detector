@@ -7,3 +7,4 @@
 模块描述: 
 """
 from .fpn import FPN
+from .simple_neck import SimpleNeck

@@ -7,3 +7,4 @@
 模块描述: 
 """
 from .fcos import FCOS
+from .lfd import LFD

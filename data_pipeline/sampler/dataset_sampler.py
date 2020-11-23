@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import random
+import numpy
 import math
 
-__all__ = ['BaseDatasetSampler', 'RandomDatasetSampler', 'COCORandomDatasetSampler']
+__all__ = ['BaseDatasetSampler', 'RandomDatasetSampler', 'COCORandomDatasetSampler', 'RandomWithNegDatasetSampler']
 
 
 class BaseDatasetSampler(object):
@@ -112,3 +113,57 @@ class COCORandomDatasetSampler(BaseDatasetSampler):
 
     def get_batch_size(self):
         return self._batch_size
+
+
+class RandomWithNegDatasetSampler(BaseDatasetSampler):
+    """
+    the dataset is divided into two parts: pos samples and neg samples.
+    both parts are shuffled.
+    for each batch, neg_ratio controls how many neg samples will be put in a batch
+    """
+
+    def __init__(self, dataset, batch_size=1, neg_ratio=0.1, shuffle=True, ignore_last=False):
+
+        assert len(dataset) > 0
+        assert batch_size <= len(dataset)
+        assert 0. <= neg_ratio <= 1
+
+        self._batch_size = batch_size
+        self._neg_ratio = neg_ratio
+        self._shuffle = shuffle
+        self._ignore_last = ignore_last
+
+        self._pos_indexes = list()
+        self._neg_indexes = list()
+        self._all_indexes = dataset.get_indexes()
+        for index in self._all_indexes:
+            if 'bboxes' in dataset[index]:
+                self._pos_indexes.append(index)
+            else:
+                self._neg_indexes.append(index)
+        if len(self._neg_indexes) == 0:
+            self._num_neg_samples_for_each_batch = 0
+        else:
+            self._num_neg_samples_for_each_batch = int(self._batch_size * self._neg_ratio)
+        self._num_pos_samples_for_each_batch = self._batch_size - self._num_neg_samples_for_each_batch
+
+        if not self._ignore_last and len(self._pos_indexes) % self._num_pos_samples_for_each_batch != 0:
+            self._loop = int(len(self._pos_indexes) / self._num_pos_samples_for_each_batch) + 1
+        else:
+            self._loop = int(len(self._pos_indexes) / self._num_pos_samples_for_each_batch)
+
+    def __len__(self):
+        return self._loop
+
+    def get_batch_size(self):
+        return self._batch_size
+
+    def __iter__(self):
+
+        random.shuffle(self._pos_indexes)
+        for i in range(self._loop):
+
+            if i == self._loop - 1:
+                yield self._pos_indexes[i * self._num_pos_samples_for_each_batch:] + numpy.random.choice(self._neg_indexes, self._num_neg_samples_for_each_batch).tolist()
+            else:
+                yield self._pos_indexes[i * self._num_pos_samples_for_each_batch:(i + 1) * self._num_pos_samples_for_each_batch] + numpy.random.choice(self._neg_indexes, self._num_neg_samples_for_each_batch).tolist()

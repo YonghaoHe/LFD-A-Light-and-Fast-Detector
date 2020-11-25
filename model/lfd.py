@@ -341,7 +341,7 @@ class LFD(nn.Module):
 
             if 0 < self._pre_nms_bbox_limit < temp_predicted_classification.size(0):
                 temp_max_scores = temp_predicted_classification.max(dim=1)[0]
-                topk_indexes = temp_max_scores.topk(self._pre_nms_bbox_limit)
+                topk_indexes = temp_max_scores.topk(self._pre_nms_bbox_limit)[1]
                 temp_predicted_classification = temp_predicted_classification[topk_indexes]
                 temp_predicted_regression = temp_predicted_regression[topk_indexes]
                 temp_point_coordinates = temp_point_coordinates[topk_indexes]

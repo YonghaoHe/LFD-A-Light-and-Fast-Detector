@@ -137,11 +137,13 @@ lfd_neck = SimpleNeck(
 
 lfd_head = LFDHead(
     num_classes=config_dict['num_classes'],
+    num_heads=len(lfd_neck.num_output_strides_list),
     num_input_channels=128,
     num_head_channels=128,
     num_conv_layers=2,
     activation_cfg=dict(type='ReLU', inplace=True),
-    norm_cfg=dict(type='BatchNorm2d')
+    norm_cfg=dict(type='BatchNorm2d'),
+    share_head_flag=False
 )
 
 classifiation_loss = FocalLoss(use_sigmoid=True,

@@ -23,6 +23,13 @@ caffe_imagenet_normalize = Normalize(
     p=1.0
 )
 
+standard_normalize = Normalize(
+    mean=(0.485, 0.456, 0.406),
+    std=(0.229, 0.224, 0.225),
+    max_pixel_value=255.0,
+    p=1.0
+)
+
 simple_normalize = Normalize(
     mean=(0.5, 0.5, 0.5),
     std=(0.5, 0.5, 0.5),
@@ -31,33 +38,33 @@ simple_normalize = Normalize(
 )
 
 bbox_param = BboxParams(format='coco', label_fields=['bbox_labels'])  # x,y,w,h
-train_pipeline_with_bboxes = Compose([random_horizon_flip,
-                                      caffe_imagenet_normalize],
-                                     bbox_params=bbox_param,
-                                     p=1.)
-train_pipeline_without_bboxes = Compose([random_horizon_flip,
-                                         caffe_imagenet_normalize],
-                                        p=1.)
+coco_train_pipeline_with_bboxes = Compose([random_horizon_flip,
+                                           caffe_imagenet_normalize],
+                                          bbox_params=bbox_param,
+                                          p=1.)
+coco_train_pipeline_without_bboxes = Compose([random_horizon_flip,
+                                              caffe_imagenet_normalize],
+                                             p=1.)
 
-val_pipeline_with_bboxes = Compose([caffe_imagenet_normalize],
-                                   bbox_params=bbox_param,
-                                   p=1.)
-val_pipeline_without_bboxes = Compose([caffe_imagenet_normalize],
-                                      p=1.)
+coco_val_pipeline_with_bboxes = Compose([caffe_imagenet_normalize],
+                                        bbox_params=bbox_param,
+                                        p=1.)
+coco_val_pipeline_without_bboxes = Compose([caffe_imagenet_normalize],
+                                           p=1.)
 
 
 def typical_coco_train_pipeline(sample):
     if 'bboxes' in sample:
-        return train_pipeline_with_bboxes(**sample)
+        return coco_train_pipeline_with_bboxes(**sample)
     else:
-        return train_pipeline_without_bboxes(**sample)
+        return coco_train_pipeline_without_bboxes(**sample)
 
 
 def typical_coco_val_pipeline(sample):
     if 'bboxes' in sample:
-        return val_pipeline_with_bboxes(**sample)
+        return coco_val_pipeline_with_bboxes(**sample)
     else:
-        return val_pipeline_without_bboxes(**sample)
+        return coco_val_pipeline_without_bboxes(**sample)
 
 
 widerface_train_pipeline_with_bboxes = Compose([random_horizon_flip,

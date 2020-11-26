@@ -108,6 +108,13 @@ config_dict['val_data_loader'] = DataLoader(dataset=val_dataset,
 '''
 build model ----------------------------------------------------------------------------------------------
 '''
+classifiation_loss = FocalLoss(use_sigmoid=True,
+                               gamma=2.0,
+                               alpha=0.25,
+                               reduction='mean',
+                               loss_weight=1.0)
+regression_loss = torch.nn.SmoothL1Loss(reduction='mean')
+
 # number of classes
 config_dict['num_classes'] = 1
 config_dict['backbone_init_param_file_path'] = None # if no pretrained weights, set to None
@@ -143,15 +150,9 @@ lfd_head = LFDHead(
     num_conv_layers=2,
     activation_cfg=dict(type='ReLU', inplace=True),
     norm_cfg=dict(type='BatchNorm2d'),
-    share_head_flag=False
+    share_head_flag=False,
+    classification_loss_type=type(classifiation_loss).__name__
 )
-
-classifiation_loss = FocalLoss(use_sigmoid=True,
-                               gamma=2.0,
-                               alpha=0.25,
-                               reduction='mean',
-                               loss_weight=1.0)
-regression_loss = torch.nn.SmoothL1Loss(reduction='mean')
 
 config_dict['model'] = LFD(
     backbone=lfd_backbone,

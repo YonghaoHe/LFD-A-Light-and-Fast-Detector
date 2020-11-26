@@ -48,7 +48,7 @@ class LFD(nn.Module):
         self._point_strides = point_strides
 
         if classification_loss_func is not None:
-            assert type(classification_loss_func).__name__ in ['BCEWithLogitsLoss', 'FocalLoss']
+            assert type(classification_loss_func).__name__ in ['BCEWithLogitsLoss', 'FocalLoss', 'CrossEntropyLoss']
         self._classification_loss_func = classification_loss_func
 
         if regression_loss_func is not None:
@@ -246,7 +246,10 @@ class LFD(nn.Module):
         classification_target_tensor, regression_target_tensor = self.annotation_to_target(all_point_coordinates_list, gt_bboxes_list, gt_labels_list)
 
         #
-        flatten_predict_classification_tensor = predict_classification_tensor.reshape(-1, self._num_classes)
+        if type(self._classification_loss_func).__name__ == 'CrossEntropyLoss':
+            flatten_predict_classification_tensor = predict_classification_tensor.reshape(-1, self._num_classes + 1)
+        else:
+            flatten_predict_classification_tensor = predict_classification_tensor.reshape(-1, self._num_classes)
         flatten_predict_regression_tensor = predict_regression_tensor.reshape(-1, 4)
         flatten_classification_target_tensor = classification_target_tensor.reshape(-1, self._num_classes)  # (N*P,C)
         flatten_regression_target_tensor = regression_target_tensor.reshape(-1, 4)  # (N*P, 4)
@@ -266,7 +269,7 @@ class LFD(nn.Module):
         max_scores, max_score_indexes = flatten_classification_target_tensor.max(dim=-1)
         pos_indexes = torch.where(max_scores >= 0.001)[0]
         # targets for FocalLoss
-        if type(self._classification_loss_func).__name__ == 'FocalLoss':
+        if type(self._classification_loss_func).__name__ in ['FocalLoss', 'CrossEntropyLoss']:
             # assign background label
             max_score_indexes = max_score_indexes * (max_scores >= 0.001) + self._num_classes * (max_scores < 0.001)
             flatten_classification_target_tensor = max_score_indexes
@@ -334,7 +337,10 @@ class LFD(nn.Module):
         predicted_bboxes_merge = list()
 
         for i in range(len(split_list)):
-            temp_predicted_classification = predicted_classification_split[i].sigmoid()
+            if type(self._classification_loss_func).__name__ in ['CrossEntropyLoss']:
+                temp_predicted_classification = predicted_classification_split[i].softmax(dim=1)
+            else:
+                temp_predicted_classification = predicted_classification_split[i].sigmoid()
             temp_predicted_regression = predicted_regression_split[i]
             temp_point_coordinates = all_point_coordinates_list[i].to(temp_predicted_regression.device)
             temp_expanded_regression_ranges = expanded_regression_ranges_list[i].to(temp_predicted_regression.device)

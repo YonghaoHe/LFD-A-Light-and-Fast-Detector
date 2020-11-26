@@ -12,7 +12,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .utils import weight_reduce_loss
+
 __all__ = ['CrossEntropyLoss']
+
 
 def cross_entropy(pred, label, weight=None, reduction='mean', avg_factor=None):
     # element-wise losses
@@ -111,4 +113,3 @@ class CrossEntropyLoss(nn.Module):
             avg_factor=avg_factor,
             **kwargs)
         return loss_cls
-

@@ -28,9 +28,11 @@ class LFDHead(nn.Module):
                  num_conv_layers=2,
                  activation_cfg=dict(type='ReLU', inplace=True),
                  norm_cfg=dict(type='BatchNorm2d'),
+                 classification_loss_type='FocalLoss',
                  share_head_flag=False,
                  ):
         super(LFDHead, self).__init__()
+        assert classification_loss_type in ['BCEWithLogitsLoss', 'FocalLoss', 'CrossEntropyLoss']
 
         self._num_classes = num_classes
         self._num_input_channels = num_input_channels
@@ -40,6 +42,7 @@ class LFDHead(nn.Module):
         self._norm_cfg = norm_cfg
         self._share_head_flag = share_head_flag
         self._num_heads = num_heads
+        self._classification_loss_type = classification_loss_type
 
         for i in range(self._num_heads):
             if i == 0:
@@ -88,7 +91,11 @@ class LFDHead(nn.Module):
                 regression_path.append(get_operator_from_cfg(temp_norm_cfg))
             regression_path.append(get_operator_from_cfg(self._activation_cfg))
 
-        classification_path.append(nn.Conv2d(in_channels=self._num_head_channels, out_channels=self._num_classes, kernel_size=1, stride=1, padding=0, bias=True))
+        if self._classification_loss_type == 'CrossEntropyLoss':
+            classification_path.append(nn.Conv2d(in_channels=self._num_head_channels, out_channels=self._num_classes+1, kernel_size=1, stride=1, padding=0, bias=True))
+        else:
+            classification_path.append(nn.Conv2d(in_channels=self._num_head_channels, out_channels=self._num_classes, kernel_size=1, stride=1, padding=0, bias=True))
+
         regression_path.append(nn.Conv2d(in_channels=self._num_head_channels, out_channels=4, kernel_size=1, stride=1, padding=0, bias=True))
 
         classification_path = nn.Sequential(*classification_path)

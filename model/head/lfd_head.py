@@ -92,7 +92,7 @@ class LFDHead(nn.Module):
             regression_path.append(get_operator_from_cfg(self._activation_cfg))
 
         if self._classification_loss_type == 'CrossEntropyLoss':
-            classification_path.append(nn.Conv2d(in_channels=self._num_head_channels, out_channels=self._num_classes+1, kernel_size=1, stride=1, padding=0, bias=True))
+            classification_path.append(nn.Conv2d(in_channels=self._num_head_channels, out_channels=self._num_classes + 1, kernel_size=1, stride=1, padding=0, bias=True))
         else:
             classification_path.append(nn.Conv2d(in_channels=self._num_head_channels, out_channels=self._num_classes, kernel_size=1, stride=1, padding=0, bias=True))
 

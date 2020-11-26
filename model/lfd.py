@@ -47,10 +47,13 @@ class LFD(nn.Module):
         self._num_heads = len(point_strides)
         self._point_strides = point_strides
 
+        # currently, classification losses support BCEWithLogitsLoss, CrossEntropyLoss, FocalLoss
+        # we find that FocalLoss is not suitable for train-from-scratch
         if classification_loss_func is not None:
             assert type(classification_loss_func).__name__ in ['BCEWithLogitsLoss', 'FocalLoss', 'CrossEntropyLoss']
         self._classification_loss_func = classification_loss_func
 
+        # currently, regression losses support SmoothL1Loss, MSELoss
         if regression_loss_func is not None:
             assert type(regression_loss_func).__name__ in ['SmoothL1Loss', 'MSELoss']
         self._regression_loss_func = regression_loss_func
@@ -245,7 +248,7 @@ class LFD(nn.Module):
         # 进行annotation 到 target 的转换
         classification_target_tensor, regression_target_tensor = self.annotation_to_target(all_point_coordinates_list, gt_bboxes_list, gt_labels_list)
 
-        #
+        # CAUTION: the number of channels for CrossEntropyLoss is num_classes + 1 (additional one channel for bg)
         if type(self._classification_loss_func).__name__ == 'CrossEntropyLoss':
             flatten_predict_classification_tensor = predict_classification_tensor.reshape(-1, self._num_classes + 1)
         else:
@@ -268,7 +271,7 @@ class LFD(nn.Module):
 
         max_scores, max_score_indexes = flatten_classification_target_tensor.max(dim=-1)
         pos_indexes = torch.where(max_scores >= 0.001)[0]
-        # targets for FocalLoss
+        # targets for FocalLoss/CrossEntropyLoss are label indexes
         if type(self._classification_loss_func).__name__ in ['FocalLoss', 'CrossEntropyLoss']:
             # assign background label
             max_score_indexes = max_score_indexes * (max_scores >= 0.001) + self._num_classes * (max_scores < 0.001)
@@ -313,7 +316,8 @@ class LFD(nn.Module):
             # [x1, y1, x2, y2, score] -> [x1, y1, w, h, score]
             nms_bboxes[:, 2] = nms_bboxes[:, 2] - nms_bboxes[:, 0] + 1
             nms_bboxes[:, 3] = nms_bboxes[:, 3] - nms_bboxes[:, 1] + 1
-            temp_results = torch.cat([nms_labels[:, None].to(nms_bboxes), nms_bboxes[:, [4, 0, 1, 2, 3]]], dim=1)  # each row : [class_label, score, x1, y1, w, h]
+            # each row : [class_label, score, x1, y1, w, h]
+            temp_results = torch.cat([nms_labels[:, None].to(nms_bboxes), nms_bboxes[:, [4, 0, 1, 2, 3]]], dim=1)
             # from tensor to list
             temp_results = temp_results.tolist()
             temp_results = [[int(temp_result[0])] + temp_result[1:] for temp_result in temp_results]

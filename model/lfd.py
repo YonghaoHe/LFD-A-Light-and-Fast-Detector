@@ -295,6 +295,12 @@ class LFD(nn.Module):
                     loss_values=loss_values)
 
     def get_results(self, predict_outputs, *args):
+        """
+        for evaluation
+        :param predict_outputs:
+        :param args:
+        :return:
+        """
         predict_classification_tensor, predict_regression_tensor = predict_outputs
         num_samples = predict_classification_tensor.size(0)
         all_point_coordinates_list = self.generate_point_coordinates(self._head_indexes_to_feature_map_sizes)
@@ -343,6 +349,7 @@ class LFD(nn.Module):
         for i in range(len(split_list)):
             if type(self._classification_loss_func).__name__ in ['CrossEntropyLoss']:
                 temp_predicted_classification = predicted_classification_split[i].softmax(dim=1)
+                temp_predicted_classification = temp_predicted_classification[:, :-1]  # remove bg
             else:
                 temp_predicted_classification = predicted_classification_split[i].sigmoid()
             temp_predicted_regression = predicted_regression_split[i]
@@ -420,3 +427,87 @@ class LFD(nn.Module):
         regression_output_tensor = torch.cat(regression_reformat_outputs, dim=1)
 
         return classification_output_tensor, regression_output_tensor
+
+    def predict_for_single_image(self, data_batch, classification_threshold=None, nms_threshold=None):
+        """
+        for easy prediction
+
+        """
+        assert data_batch.ndim == 4 and data_batch.size(0) == 1
+        image_width = data_batch.size(3)
+        image_height = data_batch.size(2)
+        data_batch.cuda()
+        self.cuda()
+        self.eval()
+
+        with torch.no_grad():
+            predicted_classification, predicted_regression = self.forward(data_batch)
+        predicted_classification = predicted_classification[0]
+        predicted_regression = predicted_regression[0]
+
+        all_point_coordinates_list = self.generate_point_coordinates(self._head_indexes_to_feature_map_sizes)
+        expanded_regression_ranges_list = [all_point_coordinates_list[i].new_tensor(self._regression_ranges[i])[None].expand_as(all_point_coordinates_list[i])
+                                           for i in range(self._num_heads)]
+
+        concat_point_coordinates = torch.cat(all_point_coordinates_list, dim=0)
+        concat_regression_ranges = torch.cat(expanded_regression_ranges_list, dim=0)
+
+        if type(self._classification_loss_func).__name__ in ['CrossEntropyLoss']:
+            predicted_classification = predicted_classification.softmax(dim=1)
+            predicted_classification = predicted_classification[:, :-1]  # remove bg
+        else:
+            predicted_classification = predicted_classification.sigmoid()
+
+        concat_point_coordinates = concat_point_coordinates.to(predicted_regression.device)
+        concat_regression_ranges = concat_regression_ranges.to(predicted_regression.device)
+
+        classification_threshold = classification_threshold if classification_threshold is not None else self._classification_threshold
+        max_scores = predicted_classification.max(dim=1)[0]
+        selected_indexes = torch.where(max_scores > classification_threshold)[0]
+
+        predicted_classification = predicted_classification[selected_indexes]
+        predicted_regression = predicted_regression[selected_indexes]
+        concat_point_coordinates = concat_point_coordinates[selected_indexes]
+        concat_regression_ranges = concat_regression_ranges[selected_indexes]
+
+        #  calculate bboxes' x1 y1 x2 y2
+        predicted_regression = predicted_regression * concat_regression_ranges[..., 1, None]
+        x1 = concat_point_coordinates[:, 0] - predicted_regression[:, 0]
+        x1 = x1.clamp(min=0, max=image_width)
+        y1 = concat_point_coordinates[:, 1] - predicted_regression[:, 1]
+        y1 = y1.clamp(min=0, max=image_height)
+        x2 = concat_point_coordinates[:, 0] + predicted_regression[:, 2]
+        x2 = x2.clamp(min=0, max=image_width)
+        y2 = concat_point_coordinates[:, 1] + predicted_regression[:, 3]
+        y2 = y2.clamp(min=0, max=image_height)
+        predicted_bboxes = torch.stack([x1, y1, x2, y2], -1)
+
+        # add BG label for multi class nms
+        bg_label_padding = predicted_classification.new_zeros(predicted_classification.size(0), 1)
+        predicted_classification = torch.cat([predicted_classification, bg_label_padding], dim=1)
+
+        if nms_threshold:
+            self._nms_cfg.update({'iou_thr': nms_threshold})
+        nms_bboxes, nms_labels = multiclass_nms(
+            multi_bboxes=predicted_bboxes,
+            multi_scores=predicted_classification,
+            score_thr=classification_threshold,
+            nms_cfg=self._nms_cfg,
+            max_num=-1,
+            score_factors=None
+        )
+
+        if nms_bboxes.size(0) == 0:
+            return []
+
+        # [x1, y1, x2, y2, score] -> [x1, y1, w, h, score]
+        nms_bboxes[:, 2] = nms_bboxes[:, 2] - nms_bboxes[:, 0] + 1
+        nms_bboxes[:, 3] = nms_bboxes[:, 3] - nms_bboxes[:, 1] + 1
+        # each row : [class_label, score, x1, y1, w, h]
+        results = torch.cat([nms_labels[:, None].to(nms_bboxes), nms_bboxes[:, [4, 0, 1, 2, 3]]], dim=1)
+        # from tensor to list
+        results = results.tolist()
+        results = [[int(temp_result[0])] + temp_result[1:] for temp_result in results]
+
+        return results
+

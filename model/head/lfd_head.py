@@ -30,6 +30,7 @@ class LFDHead(nn.Module):
                  norm_cfg=dict(type='BatchNorm2d'),
                  classification_loss_type='FocalLoss',
                  share_head_flag=False,
+                 merge_path_flag=False,
                  ):
         super(LFDHead, self).__init__()
         assert classification_loss_type in ['BCEWithLogitsLoss', 'FocalLoss', 'CrossEntropyLoss']
@@ -41,56 +42,81 @@ class LFDHead(nn.Module):
         self._activation_cfg = activation_cfg
         self._norm_cfg = norm_cfg
         self._share_head_flag = share_head_flag
+        self._merge_path_flag = merge_path_flag
         self._num_heads = num_heads
         self._classification_loss_type = classification_loss_type
 
         for i in range(self._num_heads):
             if i == 0:
-                classification_path, regression_path = self._build_head()
+                classification_path, regression_path, merge_path = self._build_head()
                 setattr(self, 'head%d_classification_path' % i, classification_path)
                 setattr(self, 'head%d_regression_path' % i, regression_path)
+                setattr(self, 'head%d_merge_path' % i, merge_path)
             else:
                 if self._share_head_flag:
                     setattr(self, 'head%d_classification_path' % i, getattr(self, 'head%d_classification_path' % 0))
                     setattr(self, 'head%d_regression_path' % i, getattr(self, 'head%d_regression_path' % 0))
+                    setattr(self, 'head%d_merge_path' % i, getattr(self, 'head%d_merge_path' % 0))
                 else:
-                    classification_path, regression_path = self._build_head()
+                    classification_path, regression_path, merge_path = self._build_head()
                     setattr(self, 'head%d_classification_path' % i, classification_path)
                     setattr(self, 'head%d_regression_path' % i, regression_path)
+                    setattr(self, 'head%d_merge_path' % i, merge_path)
 
         self._init_weights()
 
     def _build_head(self):
         classification_path = list()
         regression_path = list()
+        merge_path = list()
 
-        for i in range(self._num_conv_layers):
-            in_channels = self._num_input_channels if i == 0 else self._num_head_channels
+        if self._merge_path_flag:
 
-            classification_path.append(
-                nn.Conv2d(in_channels=in_channels, out_channels=self._num_head_channels, kernel_size=1, stride=1, padding=0, bias=True if self._norm_cfg is None else False)
-            )
-            if self._norm_cfg is not None:
-                temp_norm_cfg = self._norm_cfg.copy()
-                if temp_norm_cfg['type'] == 'BatchNorm2d':
-                    temp_norm_cfg['num_features'] = self._num_head_channels
-                else:
-                    temp_norm_cfg['num_channels'] = self._num_head_channels
-                classification_path.append(get_operator_from_cfg(temp_norm_cfg))
-            classification_path.append(get_operator_from_cfg(self._activation_cfg))
+            for i in range(self._num_conv_layers):
+                in_channels = self._num_input_channels if i == 0 else self._num_head_channels
 
-            regression_path.append(
-                nn.Conv2d(in_channels=in_channels, out_channels=self._num_head_channels, kernel_size=1, stride=1, padding=0, bias=True if self._norm_cfg is None else False)
-            )
-            if self._norm_cfg is not None:
-                temp_norm_cfg = self._norm_cfg.copy()
-                if temp_norm_cfg['type'] == 'BatchNorm2d':
-                    temp_norm_cfg['num_features'] = self._num_head_channels
-                else:
-                    temp_norm_cfg['num_channels'] = self._num_head_channels
-                regression_path.append(get_operator_from_cfg(temp_norm_cfg))
-            regression_path.append(get_operator_from_cfg(self._activation_cfg))
+                merge_path.append(
+                    nn.Conv2d(in_channels=in_channels, out_channels=self._num_head_channels, kernel_size=1, stride=1, padding=0, bias=True if self._norm_cfg is None else False)
+                )
+                if self._norm_cfg is not None:
+                    temp_norm_cfg = self._norm_cfg.copy()
+                    if temp_norm_cfg['type'] == 'BatchNorm2d':
+                        temp_norm_cfg['num_features'] = self._num_head_channels
+                    else:
+                        temp_norm_cfg['num_channels'] = self._num_head_channels
+                    merge_path.append(get_operator_from_cfg(temp_norm_cfg))
+                merge_path.append(get_operator_from_cfg(self._activation_cfg))
 
+        else:
+
+            for i in range(self._num_conv_layers):
+                in_channels = self._num_input_channels if i == 0 else self._num_head_channels
+
+                classification_path.append(
+                    nn.Conv2d(in_channels=in_channels, out_channels=self._num_head_channels, kernel_size=1, stride=1, padding=0, bias=True if self._norm_cfg is None else False)
+                )
+                if self._norm_cfg is not None:
+                    temp_norm_cfg = self._norm_cfg.copy()
+                    if temp_norm_cfg['type'] == 'BatchNorm2d':
+                        temp_norm_cfg['num_features'] = self._num_head_channels
+                    else:
+                        temp_norm_cfg['num_channels'] = self._num_head_channels
+                    classification_path.append(get_operator_from_cfg(temp_norm_cfg))
+                classification_path.append(get_operator_from_cfg(self._activation_cfg))
+
+                regression_path.append(
+                    nn.Conv2d(in_channels=in_channels, out_channels=self._num_head_channels, kernel_size=1, stride=1, padding=0, bias=True if self._norm_cfg is None else False)
+                )
+                if self._norm_cfg is not None:
+                    temp_norm_cfg = self._norm_cfg.copy()
+                    if temp_norm_cfg['type'] == 'BatchNorm2d':
+                        temp_norm_cfg['num_features'] = self._num_head_channels
+                    else:
+                        temp_norm_cfg['num_channels'] = self._num_head_channels
+                    regression_path.append(get_operator_from_cfg(temp_norm_cfg))
+                regression_path.append(get_operator_from_cfg(self._activation_cfg))
+
+        # final layers for losses
         if self._classification_loss_type == 'CrossEntropyLoss':
             classification_path.append(nn.Conv2d(in_channels=self._num_head_channels, out_channels=self._num_classes + 1, kernel_size=1, stride=1, padding=0, bias=True))
         else:
@@ -100,7 +126,9 @@ class LFDHead(nn.Module):
 
         classification_path = nn.Sequential(*classification_path)
         regression_path = nn.Sequential(*regression_path)
-        return classification_path, regression_path
+        merge_path = nn.Sequential(*merge_path)
+
+        return classification_path, regression_path, merge_path
 
     def _init_weights(self):
         for m in self.modules():
@@ -121,6 +149,8 @@ class LFDHead(nn.Module):
         regression_outputs = []
 
         for i, temp_input in enumerate(inputs):
+            temp_input = getattr(self, 'head%d_merge_path' % i)(temp_input)
+
             classification_input = temp_input
             regression_input = temp_input
 

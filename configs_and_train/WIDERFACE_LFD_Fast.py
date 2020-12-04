@@ -163,6 +163,7 @@ def prepare_model():
         activation_cfg=dict(type='ReLU', inplace=True),
         norm_cfg=dict(type='BatchNorm2d'),
         share_head_flag=False,
+        merge_path_flag=False,
         classification_loss_type=type(classifiation_loss).__name__
     )
 

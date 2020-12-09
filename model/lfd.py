@@ -11,8 +11,6 @@ from .utils import multiclass_nms
 
 __all__ = ['LFD']
 
-INF = 1e8
-
 
 class LFD(nn.Module):
     """
@@ -24,11 +22,12 @@ class LFD(nn.Module):
                  neck=None,
                  head=None,
                  num_classes=80,
-                 regression_ranges=((0, 64), (64, 128), (128, 256), (256, 512), (512, INF)),
+                 regression_ranges=((0, 64), (64, 128), (128, 256), (256, 512), (512, 1024)),
                  gray_range_factors=(0.9, 1.1),
                  point_strides=(8, 16, 32, 64, 128),
                  classification_loss_func=None,
                  regression_loss_func=None,
+                 distance_to_bbox_mode='exp',
                  classification_threshold=0.05,
                  nms_threshold=0.5,
                  pre_nms_bbox_limit=1000,
@@ -47,16 +46,24 @@ class LFD(nn.Module):
         self._num_heads = len(point_strides)
         self._point_strides = point_strides
 
-        # currently, classification losses support BCEWithLogitsLoss, CrossEntropyLoss, FocalLoss
+        # currently, classification losses support BCEWithLogitsLoss, CrossEntropyLoss, FocalLoss, QualityFocalLoss(TBD)
         # we find that FocalLoss is not suitable for train-from-scratch
         if classification_loss_func is not None:
             assert type(classification_loss_func).__name__ in ['BCEWithLogitsLoss', 'FocalLoss', 'CrossEntropyLoss']
         self._classification_loss_func = classification_loss_func
 
-        # currently, regression losses support SmoothL1Loss, MSELoss
+        # currently, regression losses support SmoothL1Loss, MSELoss, IoULoss, GIoULoss, DIoULoss, CIoULoss
+        # regression losses are divided into two categories: independent(SmoothL1Loss, MSELoss) and
+        # union(IoULoss, GIoULoss, DIoULoss, CIoULoss)
         if regression_loss_func is not None:
-            assert type(regression_loss_func).__name__ in ['SmoothL1Loss', 'MSELoss']
+            assert type(regression_loss_func).__name__ in ['SmoothL1Loss', 'MSELoss', 'IoULoss', 'GIoULoss', 'DIoULoss', 'CIoULoss']
+            if type(regression_loss_func).__name__ in ['SmoothL1Loss', 'MSELoss']:
+                self._regression_loss_type = 'independent'
+            else:
+                self._regression_loss_type = 'union'
         self._regression_loss_func = regression_loss_func
+        assert distance_to_bbox_mode in ['exp', 'sigmoid']
+        self._distance_to_bbox_mode = distance_to_bbox_mode
 
         self._classification_threshold = classification_threshold
         self._nms_cfg = dict(type='nms', iou_thr=nms_threshold)
@@ -176,7 +183,7 @@ class LFD(nn.Module):
 
         concat_strides = concat_strides[:, None]
 
-        # calculate scores for classification
+        # calculate scores in [0, 1] for classification
         # the closer the point near the center, the higher score it will get
         abs_to_center_x = torch.abs(point_x_coordinates - gt_bboxes_center_x)
         abs_to_center_y = torch.abs(point_y_corrdinates - gt_bboxes_center_y)
@@ -193,8 +200,9 @@ class LFD(nn.Module):
         delta_y1 = point_y_corrdinates - gt_bboxes[..., 1]
         delta_x2 = (gt_bboxes[..., 0] + gt_bboxes[..., 2] - 1) - point_x_coordinates
         delta_y2 = (gt_bboxes[..., 1] + gt_bboxes[..., 3] - 1) - point_y_corrdinates
-        regression_delta = torch.stack((delta_x1, delta_y1, delta_x2, delta_y2), dim=-1)
-        regression_delta = regression_delta / concat_regression_ranges[..., 1, None]  # P x N x 4
+        regression_delta = torch.stack((delta_x1, delta_y1, delta_x2, delta_y2), dim=-1)  # distance to left, top, right, bottom
+        if self._regression_loss_type == 'independent':
+            regression_delta = regression_delta / concat_regression_ranges[..., 1, None]  # P x N x 4
 
         # determine learnable points P x N
         head_selection_condition = (concat_regression_ranges[..., 0] <= gt_bboxes_larger_side) & (gt_bboxes_larger_side <= concat_regression_ranges[..., 1])
@@ -206,6 +214,10 @@ class LFD(nn.Module):
         gray_condition = (gray_condition1 | gray_condition2) & hit_condition
 
         # rank scores in ascending order for each point
+        # why rank here: for a certain class, multiple objects may cover the same point, putting the largest score at the end will make
+        # the classification_targets assigned with this largest score.
+        # 对于单个类别来说，某个point可能落入多个这个类别目标的bbox中，那classification target应该被赋值为这个类别最大的那个得分，所以这里通过把
+        # 最大的分数排在最后来实现的，具体影响的代码是：classification_targets[index1, green_label_index] = sorted_point_scores[index1, index2]
         sorted_point_scores, sorted_indexes = point_scores.sort(dim=1)
         intermediate_indexes = sorted_indexes.new_tensor(range(sorted_indexes.size(0)))[..., None].expand(sorted_indexes.size(0), sorted_indexes.size(1))
 
@@ -232,6 +244,29 @@ class LFD(nn.Module):
 
         return classification_targets, regression_targets
 
+    def distance2bbox(self, points, distance, max_shape=None):
+        """Decode distance prediction to bounding box.
+
+        Args:
+            points (Tensor): Shape (n, 2), [x, y].
+            distance (Tensor): Distance from the given point to 4
+                boundaries (left, top, right, bottom).
+            max_shape (tuple): Shape of the image.
+
+        Returns:
+            Tensor: Decoded bboxes.
+        """
+        x1 = points[:, 0] - distance[:, 0]
+        y1 = points[:, 1] - distance[:, 1]
+        x2 = points[:, 0] + distance[:, 2]
+        y2 = points[:, 1] + distance[:, 3]
+        if max_shape is not None:
+            x1 = x1.clamp(min=0, max=max_shape[1])
+            y1 = y1.clamp(min=0, max=max_shape[0])
+            x2 = x2.clamp(min=0, max=max_shape[1])
+            y2 = y2.clamp(min=0, max=max_shape[0])
+        return torch.stack([x1, y1, x2, y2], -1)
+
     def get_loss(self, predict_outputs, annotation_batch, *args):
 
         predict_classification_tensor, predict_regression_tensor = predict_outputs
@@ -248,6 +283,7 @@ class LFD(nn.Module):
         # 进行annotation 到 target 的转换
         classification_target_tensor, regression_target_tensor = self.annotation_to_target(all_point_coordinates_list, gt_bboxes_list, gt_labels_list)
 
+        batch_size = predict_classification_tensor.size(0)
         # CAUTION: the number of channels for CrossEntropyLoss is num_classes + 1 (additional one channel for bg)
         if type(self._classification_loss_func).__name__ == 'CrossEntropyLoss':
             flatten_predict_classification_tensor = predict_classification_tensor.reshape(-1, self._num_classes + 1)
@@ -280,9 +316,37 @@ class LFD(nn.Module):
         flatten_predict_regression_tensor = flatten_predict_regression_tensor[pos_indexes]
         flatten_regression_target_tensor = flatten_regression_target_tensor[pos_indexes]
 
+        # get classification loss
         classification_loss = self._classification_loss_func(flatten_predict_classification_tensor, flatten_classification_target_tensor)
+
+        # get regression loss
         if pos_indexes.nelement() > 0:
-            regression_loss = self._regression_loss_func(flatten_predict_regression_tensor, flatten_regression_target_tensor)
+            if self._regression_loss_type == 'independent':
+                regression_loss = self._regression_loss_func(flatten_predict_regression_tensor, flatten_regression_target_tensor)
+            else:
+                flatten_all_point_coordinates = (torch.cat(all_point_coordinates_list, dim=0)).repeat(batch_size, 1)
+                flatten_all_point_coordinates = flatten_all_point_coordinates.to(flatten_predict_regression_tensor.device)
+                flatten_all_point_coordinates = flatten_all_point_coordinates[green_indexes][pos_indexes]
+
+                flatten_xyxy_regression_target_tensor = self.distance2bbox(flatten_all_point_coordinates, flatten_regression_target_tensor)
+
+                if self._distance_to_bbox_mode == 'exp':
+                    flatten_predict_regression_tensor = flatten_predict_regression_tensor.float().exp()
+                    flatten_xyxy_predict_regression_tensor = self.distance2bbox(flatten_all_point_coordinates, flatten_predict_regression_tensor)
+                elif self._distance_to_bbox_mode == 'sigmoid':
+                    expanded_regression_ranges_list = [all_point_coordinates_list[i].new_tensor(self._regression_ranges[i])[None].expand_as(all_point_coordinates_list[i])
+                                                       for i in range(self._num_heads)]
+                    concat_regression_ranges = (torch.cat(expanded_regression_ranges_list, dim=0)).repeat(batch_size, 1)
+                    concat_regression_ranges = concat_regression_ranges.to(flatten_predict_regression_tensor.device)
+                    concat_regression_ranges = concat_regression_ranges[green_indexes][pos_indexes]
+                    concat_regression_ranges_max = concat_regression_ranges.max(dim=-1)[0]
+                    flatten_predict_regression_tensor = flatten_predict_regression_tensor.sigmoid() * concat_regression_ranges_max[..., None]
+                    flatten_xyxy_predict_regression_tensor = self.distance2bbox(flatten_all_point_coordinates, flatten_predict_regression_tensor)
+                else:
+                    raise ValueError('Unknown distance_to_bbox mode!')
+
+                regression_loss = self._regression_loss_func(flatten_xyxy_predict_regression_tensor, flatten_xyxy_regression_target_tensor)
+
         else:
             regression_loss = flatten_predict_regression_tensor.sum()
 
@@ -510,4 +574,3 @@ class LFD(nn.Module):
         results = [[int(temp_result[0])] + temp_result[1:] for temp_result in results]
 
         return results
-

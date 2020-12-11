@@ -177,6 +177,7 @@ def prepare_model():
         point_strides=lfd_neck.num_output_strides_list,
         classification_loss_func=classifiation_loss,
         regression_loss_func=regression_loss,
+        distance_to_bbox_mode='exp',
         classification_threshold=0.05,
         nms_threshold=0.5,
         pre_nms_bbox_limit=1000,

@@ -429,16 +429,27 @@ class LFD(nn.Module):
                 temp_expanded_regression_ranges = temp_expanded_regression_ranges[topk_indexes]
 
             #  calculate bboxes' x1 y1 x2 y2
-            temp_predicted_regression = temp_predicted_regression * temp_expanded_regression_ranges[..., 1, None]
-            x1 = temp_point_coordinates[:, 0] - temp_predicted_regression[:, 0]
-            x1 = x1.clamp(min=0, max=image_resized_width)
-            y1 = temp_point_coordinates[:, 1] - temp_predicted_regression[:, 1]
-            y1 = y1.clamp(min=0, max=image_resized_height)
-            x2 = temp_point_coordinates[:, 0] + temp_predicted_regression[:, 2]
-            x2 = x2.clamp(min=0, max=image_resized_width)
-            y2 = temp_point_coordinates[:, 1] + temp_predicted_regression[:, 3]
-            y2 = y2.clamp(min=0, max=image_resized_height)
-            temp_bboxes = torch.stack([x1, y1, x2, y2], -1)
+            if self._regression_loss_type == 'independent':
+                temp_predicted_regression = temp_predicted_regression * temp_expanded_regression_ranges[..., 1, None]
+                x1 = temp_point_coordinates[:, 0] - temp_predicted_regression[:, 0]
+                x1 = x1.clamp(min=0, max=image_resized_width)
+                y1 = temp_point_coordinates[:, 1] - temp_predicted_regression[:, 1]
+                y1 = y1.clamp(min=0, max=image_resized_height)
+                x2 = temp_point_coordinates[:, 0] + temp_predicted_regression[:, 2]
+                x2 = x2.clamp(min=0, max=image_resized_width)
+                y2 = temp_point_coordinates[:, 1] + temp_predicted_regression[:, 3]
+                y2 = y2.clamp(min=0, max=image_resized_height)
+                temp_bboxes = torch.stack([x1, y1, x2, y2], -1)
+            else:
+                if self._distance_to_bbox_mode == 'exp':
+                    temp_predicted_regression = temp_predicted_regression.float().exp()
+                    temp_bboxes = self.distance2bbox(temp_point_coordinates, temp_predicted_regression, max_shape=(image_resized_height, image_resized_width))
+                elif self._distance_to_bbox_mode == 'sigmoid':
+                    temp_expanded_regression_ranges_max = temp_expanded_regression_ranges.max(dim=-1)[0]
+                    temp_predicted_regression = temp_predicted_regression.sigmoid() * temp_expanded_regression_ranges_max[..., None]
+                    temp_bboxes = self.distance2bbox(temp_point_coordinates, temp_predicted_regression, max_shape=(image_resized_height, image_resized_width))
+                else:
+                    raise ValueError('Unknown distance_to_bbox mode!')
 
             predicted_classification_merge.append(temp_predicted_classification)
             predicted_bboxes_merge.append(temp_bboxes)
@@ -535,17 +546,27 @@ class LFD(nn.Module):
         concat_regression_ranges = concat_regression_ranges[selected_indexes]
 
         #  calculate bboxes' x1 y1 x2 y2
-        predicted_regression = predicted_regression * concat_regression_ranges[..., 1, None]
-        x1 = concat_point_coordinates[:, 0] - predicted_regression[:, 0]
-        x1 = x1.clamp(min=0, max=image_width)
-        y1 = concat_point_coordinates[:, 1] - predicted_regression[:, 1]
-        y1 = y1.clamp(min=0, max=image_height)
-        x2 = concat_point_coordinates[:, 0] + predicted_regression[:, 2]
-        x2 = x2.clamp(min=0, max=image_width)
-        y2 = concat_point_coordinates[:, 1] + predicted_regression[:, 3]
-        y2 = y2.clamp(min=0, max=image_height)
-        predicted_bboxes = torch.stack([x1, y1, x2, y2], -1)
-
+        if self._regression_loss_type == 'independent':
+            predicted_regression = predicted_regression * concat_regression_ranges[..., 1, None]
+            x1 = concat_point_coordinates[:, 0] - predicted_regression[:, 0]
+            x1 = x1.clamp(min=0, max=image_width)
+            y1 = concat_point_coordinates[:, 1] - predicted_regression[:, 1]
+            y1 = y1.clamp(min=0, max=image_height)
+            x2 = concat_point_coordinates[:, 0] + predicted_regression[:, 2]
+            x2 = x2.clamp(min=0, max=image_width)
+            y2 = concat_point_coordinates[:, 1] + predicted_regression[:, 3]
+            y2 = y2.clamp(min=0, max=image_height)
+            predicted_bboxes = torch.stack([x1, y1, x2, y2], -1)
+        else:
+            if self._distance_to_bbox_mode == 'exp':
+                predicted_regression = predicted_regression.float().exp()
+                predicted_bboxes= self.distance2bbox(concat_point_coordinates, predicted_regression, max_shape=(image_height, image_width))
+            elif self._distance_to_bbox_mode == 'sigmoid':
+                concat_regression_ranges_max = concat_regression_ranges.max(dim=-1)[0]
+                predicted_regression = predicted_regression.sigmoid() * concat_regression_ranges_max[..., None]
+                predicted_bboxes = self.distance2bbox(concat_point_coordinates, predicted_regression, max_shape=(image_height, image_width))
+            else:
+                raise ValueError('Unknown distance_to_bbox mode!')
         # add BG label for multi class nms
         bg_label_padding = predicted_classification.new_zeros(predicted_classification.size(0), 1)
         predicted_classification = torch.cat([predicted_classification, bg_label_padding], dim=1)

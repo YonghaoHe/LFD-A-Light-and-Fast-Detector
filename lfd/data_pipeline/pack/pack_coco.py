@@ -5,9 +5,10 @@ import pickle
 import cv2
 from ..dataset.coco_parser import COCOParser
 from ..dataset.dataset import Dataset
+__all__ = ['pack_coco', 'pack_coco_mini_for_debug', 'check_by_show']
 
 
-def pack(image_root_path, annotation_path, pack_save_path, filter_no_gt, filter_min_size=32):
+def pack_coco(image_root_path, annotation_path, pack_save_path, filter_no_gt, filter_min_size=32):
     assert os.path.exists(image_root_path), 'image root path does not exist!'
     assert os.path.exists(annotation_path), 'annotation path does not exist!'
     assert pack_save_path.lower().endswith('.pkl'), 'the required suffix is .pkl!'
@@ -22,7 +23,7 @@ def pack(image_root_path, annotation_path, pack_save_path, filter_no_gt, filter_
     print(dataset)
 
 
-def pack_mini_for_debug(val_pkl_path, mini_pkl_save_path):
+def pack_coco_mini_for_debug(val_pkl_path, mini_pkl_save_path):
     """
     get a mini dataset for debug based on existed pkl files
     :return:
@@ -48,7 +49,7 @@ def pack_mini_for_debug(val_pkl_path, mini_pkl_save_path):
     pickle.dump([meta_info, new_index_annotation_dict, new_dataset], open(mini_pkl_save_path, 'wb'), pickle.HIGHEST_PROTOCOL)
 
 
-def check(pkl_path):
+def check_by_show(pkl_path):
     assert os.path.exists(pkl_path), 'pkl path does not exist!'
 
     dataset = Dataset(load_path=pkl_path)

@@ -36,7 +36,7 @@ Once successful, you will see: `----> build and copy successfully!`
        `make`
       
      > make sure that `cmake` configuration properly
-  3. copy `build/libturbojpeg.so.x.x.x` to `data_pipeline/dataset/utils/libs`
+  3. copy `build/libturbojpeg.so.x.x.x` to `lfd/data_pipeline/dataset/utils/libs`
 
 **Data Preparation**
 

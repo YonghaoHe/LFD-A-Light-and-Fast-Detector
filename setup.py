@@ -38,19 +38,19 @@ if __name__ == '__main__':
         ext_modules=[
             make_cuda_ext(
                 name='nms_ext',
-                sources=['model/utils/build/nms/src/nms_ext.cpp', 'model/utils/build/nms/src/cpu/nms_cpu.cpp'],
-                sources_cuda=['model/utils/build/nms/src/cuda/nms_cuda.cpp', 'model/utils/build/nms/src/cuda/nms_kernel.cu']),
+                sources=['lfd/model/utils/build/nms/src/nms_ext.cpp', 'lfd/model/utils/build/nms/src/cpu/nms_cpu.cpp'],
+                sources_cuda=['lfd/model/utils/build/nms/src/cuda/nms_cuda.cpp', 'lfd/model/utils/build/nms/src/cuda/nms_kernel.cu']),
             make_cuda_ext(
                 name='sigmoid_focal_loss_ext',
-                sources=['model/losses/build/sigmoid_focal_loss/src/sigmoid_focal_loss_ext.cpp'],
-                sources_cuda=['model/losses/build/sigmoid_focal_loss/src/cuda/sigmoid_focal_loss_cuda.cu'])
+                sources=['lfd/model/losses/build/sigmoid_focal_loss/src/sigmoid_focal_loss_ext.cpp'],
+                sources_cuda=['lfd/model/losses/build/sigmoid_focal_loss/src/cuda/sigmoid_focal_loss_cuda.cu'])
         ],
         cmdclass={'build_ext': BuildExtension}
     )
 
     # copy .so files
-    names_to_target_dirs = {'nms_ext': './model/utils/libs',
-                            'sigmoid_focal_loss_ext': './model/losses/libs'}
+    names_to_target_dirs = {'nms_ext': './lfd/model/utils/libs',
+                            'sigmoid_focal_loss_ext': './lfd/model/losses/libs'}
     try:
         lib_dir = [dir_name for dir_name in os.listdir('./build') if dir_name.lower().startswith('lib.')][0]
         so_file_names = [so_file_name for so_file_name in os.listdir(os.path.join('./build', lib_dir)) if so_file_name.lower().endswith('.so')]

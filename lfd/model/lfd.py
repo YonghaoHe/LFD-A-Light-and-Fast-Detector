@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import numpy
 import cv2
+from ..data_pipeline.dataset import Sample
 from .utils import multiclass_nms
 
 __all__ = ['LFD']
@@ -515,7 +516,7 @@ class LFD(nn.Module):
             image = cv2.imread(image, cv2.IMREAD_UNCHANGED)
             assert image is not None, 'image is None, confirm that the path is valid!'
 
-        sample = dict()
+        sample = Sample()
         sample['image'] = image
         sample = aug_pipeline(sample)
         data_batch = sample['image']

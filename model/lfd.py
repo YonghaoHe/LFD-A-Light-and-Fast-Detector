@@ -6,7 +6,6 @@ import torch
 import torch.nn as nn
 import numpy
 import cv2
-import math
 from .utils import multiclass_nms
 
 __all__ = ['LFD']
@@ -503,15 +502,30 @@ class LFD(nn.Module):
 
         return classification_output_tensor, regression_output_tensor
 
-    def predict_for_single_image(self, data_batch, classification_threshold=None, nms_threshold=None):
+    def predict_for_single_image(self, image, aug_pipeline, classification_threshold=None, nms_threshold=None):
         """
         for easy prediction
-
+        :param image: image can be string path or numpy array
+        :param aug_pipeline: image pre-processing like flip, normalization
+        :param classification_threshold: higher->higher precision, lower->higher recall
+        :param nms_threshold:
         """
-        assert data_batch.ndim == 4 and data_batch.size(0) == 1
+        assert isinstance(image, str) or isinstance(image, numpy.ndarray)
+        if isinstance(image, str):
+            image = cv2.imread(image, cv2.IMREAD_UNCHANGED)
+            assert image is not None, 'image is None, confirm that the path is valid!'
+
+        sample = dict()
+        sample['image'] = image
+        sample = aug_pipeline(sample)
+        data_batch = sample['image']
+        data_batch = data_batch[None]
+        data_batch = data_batch.transpose([0, 3, 1, 2])
+        data_batch = torch.from_numpy(data_batch)
+
         image_width = data_batch.size(3)
         image_height = data_batch.size(2)
-        data_batch.cuda()
+        data_batch = data_batch.cuda()
         self.cuda()
         self.eval()
 

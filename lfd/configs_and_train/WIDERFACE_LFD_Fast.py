@@ -6,17 +6,16 @@ import shutil
 import os
 import time
 import torch
-from execution.utils import set_random_seed, set_cudnn_backend
-from model.backbone import LFDResNet
-from model.neck import SimpleNeck
-from model.head import LFDHead
-from model import LFD
-from model.losses import *
-from data_pipeline.data_loader import DataLoader
-from data_pipeline.dataset import Dataset
-from data_pipeline.sampler import *
-from data_pipeline.augmentation import *
-from execution.executor import Executor
+from lfd.execution.utils import set_random_seed, set_cudnn_backend
+from lfd.model.backbone import LFDResNet
+from lfd.model.neck import SimpleNeck
+from lfd.model import LFDHead
+from lfd.model import *
+from lfd.data_pipeline.data_loader import DataLoader
+from lfd.data_pipeline import Dataset
+from lfd.data_pipeline.sampler import *
+from lfd.data_pipeline.augmentation import *
+from lfd.execution.executor import Executor
 
 assert torch.cuda.is_available(), 'GPU training supported only!'
 

@@ -4,18 +4,18 @@ import shutil
 import os
 import time
 import torch
-from execution.utils import set_random_seed, set_cudnn_backend
-from model.backbone import ResNet
-from model.neck import FPN
-from model.head import FCOSHead
-from model import FCOS
-from model.losses import FocalLoss, IoULoss, CrossEntropyLoss
-from data_pipeline.data_loader import DataLoader
-from data_pipeline.dataset import Dataset
-from data_pipeline.sampler import *
-from data_pipeline.augmentation import *
-from evaluation import COCOEvaluator
-from execution.executor import Executor
+from lfd.execution.utils import set_random_seed, set_cudnn_backend
+from lfd.model.backbone import ResNet
+from lfd.model.neck import FPN
+from lfd.model import FCOSHead
+from lfd.model import FCOS
+from lfd.model import FocalLoss, IoULoss, CrossEntropyLoss
+from lfd.data_pipeline.data_loader import DataLoader
+from lfd.data_pipeline import Dataset
+from lfd.data_pipeline.sampler import *
+from lfd.data_pipeline.augmentation import *
+from lfd.evaluation import COCOEvaluator
+from lfd.execution.executor import Executor
 
 assert torch.cuda.is_available(), 'GPU training supported only!'
 

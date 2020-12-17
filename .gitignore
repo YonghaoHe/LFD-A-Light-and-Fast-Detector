@@ -1,6 +1,6 @@
 /.idea/
 /lfd/data_pipeline/pack/*.pkl
-/lfd/data_pipeline/dataset/utils/libs/*
+/lfd/data_pipeline/dataset/utils/libs/*.so*
 /lfd/model/utils/libs/*.so
 /lfd/model/losses/libs/*.so
 /code_test/

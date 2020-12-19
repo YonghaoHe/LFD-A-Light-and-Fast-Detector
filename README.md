@@ -1,15 +1,34 @@
-## This repo is still under construction! Do not clone currently!
+# This repo is still under construction! Do not clone currently!
+
+## Update History
+
+## 1. Introduction
+In this repo, we release a new One-Stage Anchor-Free Detector called **LFD**. The new LFD completely surpasses the previous 
+**[LFFD](https://github.com/YonghaoHe/LFFD-A-Light-and-Fast-Face-Detector-for-Edge-Devices)** in most aspects. We are trying
+to make object detection easier, explainable and more applicable. With LFD, you are able to train and deploy a desired model 
+without all the bells and whistles.
+
+### 1.1 Highlights
+Compared to LFFD, LFD has the following features:
+* implemented with PyTorch, which is friendly for most people
+* support multi-class rather than single-class
+* less time for training
+* higher precision and lower inference latency
+* we maintain a [wiki]() for you to fully master the code
+* the performance of LFD has been proved in more real-world applications
+
+### 1.2 Sneak Peek
 
 
-## Get Started
+## 2. Get Started
 
-### Install Tips
+### 2.1 Install Procedure
 
 **Prerequirements**  
 * python = 3.6
 * albumentations = 0.4.6
 * torch = 1.4
-× torchvision = 0.5.0
+* torchvision = 0.5.0
 * cv2 = 4.0
 * numpy = 1.16
 * pycocotools = 2.0.1
@@ -38,7 +57,31 @@ Once successful, you will see: `----> build and copy successfully!`
      > make sure that `cmake` configuration properly
   3. copy `build/libturbojpeg.so.x.x.x` to `lfd/data_pipeline/dataset/utils/libs`
 
-**Data Preparation**
+**Add PYTHONPATH**
+
+The last step is to add the repo root to PYTHONPATH. You have two ways:
+* permanent way: append `export PYTHONPATH=[repo root]:$PYTHONPATH` to the file ~/.bashrc
+* temporal way: whenever you want to code with the repo, add the following code ahead:
+  1. `import sys`
+  2. `sys.path.append('path to the repo')`
+ 
+Until now, the repo is ready for use. By the way, we do not install the repo to the default python libs location 
+(like /python3.x/site-packages/) for easily modification and development.
+
+### 2.2 Prepare the Dataset
+
+### 2.3 Train
+
+### 2.4 Deploy
+
+## 3. Advanced Guide
+
+## 4. Q&A
+
+## Acknowledgement
+* very much thankful for [PyTorch](https://pytorch.org/) framework.
+* we learn a lot and reuse some basic code from [mmdetection](https://github.com/open-mmlab/mmdetection), thanks for the great work.
+* thanks for some third-party libs like [albumentations](https://github.com/albumentations-team/albumentations), [turbojpeg](https://libjpeg-turbo.org/).
 
      
      

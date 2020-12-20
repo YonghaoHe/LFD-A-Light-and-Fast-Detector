@@ -83,6 +83,7 @@ class RandomBBoxCropRegionSampler(BaseRegionSampler):
     2, (pos sample) randomly select a bbox, randomly choose a region with crop_size ,trying to contain the selected bbox
        (neg sample) randomly crop a region with crop_size
     """
+
     def __init__(self, crop_size, resize_range=(0.5, 1.5)):
         assert isinstance(crop_size, int)
         assert isinstance(resize_range, (tuple, list))
@@ -100,13 +101,13 @@ class RandomBBoxCropRegionSampler(BaseRegionSampler):
         bboxes = sample['bboxes'] if 'bboxes' in sample else []
         labels = sample['bbox_labels'] if 'bbox_labels' in sample else []
 
-        # rescale bboxes and filter ones with w/h <= 1
+        # rescale bboxes and filter ones with w&h <= 1
         scaled_bboxes = []
         for bbox in bboxes:
-            scaled_x = int(bbox[0]*resize_scale)
-            scaled_y = int(bbox[1]*resize_scale)
-            scaled_w = int(bbox[2]*resize_scale)
-            scaled_h = int(bbox[3]*resize_scale)
+            scaled_x = int(bbox[0] * resize_scale)
+            scaled_y = int(bbox[1] * resize_scale)
+            scaled_w = math.ceil(bbox[2] * resize_scale)
+            scaled_h = math.ceil(bbox[3] * resize_scale)
             if scaled_w <= 1 or scaled_h <= 1:  # when <= 1, the bbox is meaningless
                 continue
             scaled_bboxes.append([scaled_x, scaled_y, scaled_w, scaled_h])
@@ -137,6 +138,9 @@ class RandomBBoxCropRegionSampler(BaseRegionSampler):
         if len(new_bboxes) > 0:
             sample['bboxes'] = new_bboxes
             sample['bbox_labels'] = new_labels
+        else:  # if 'bboxes' is originally in sample, it should be deleted here when len(new_bboxes)==0
+            if 'bboxes' in sample:
+                del sample['bboxes'], sample['bbox_labels']
 
         return sample
 
@@ -146,6 +150,7 @@ class IdleRegionSampler(BaseRegionSampler):
     this region sampler does not make any changes to the sample
     in most cases, it's used for evaluation
     """
+
     def __init__(self):
         pass
 

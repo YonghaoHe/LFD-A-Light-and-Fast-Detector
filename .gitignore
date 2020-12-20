@@ -3,7 +3,7 @@
 /lfd/data_pipeline/dataset/utils/libs/*.so*
 /lfd/model/utils/libs/*.so
 /lfd/model/losses/libs/*.so
-/code_test/
+/code_test/*
 /lfd/model/backbone/pretrained_backbone_weights/*
 !/lfd/model/backbone/pretrained_backbone_weights/*.md
 /build/

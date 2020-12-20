@@ -100,8 +100,18 @@ class RandomBBoxCropRegionSampler(BaseRegionSampler):
         bboxes = sample['bboxes'] if 'bboxes' in sample else []
         labels = sample['bbox_labels'] if 'bbox_labels' in sample else []
 
-        bboxes = [[int(v * resize_scale) for v in bbox] for bbox in bboxes]
-        target_bbox = random.choice(bboxes) if len(bboxes) > 0 else [0, 0, image.shape[1], image.shape[0]]
+        # rescale bboxes and filter ones with w/h <= 1
+        scaled_bboxes = []
+        for bbox in bboxes:
+            scaled_x = int(bbox[0]*resize_scale)
+            scaled_y = int(bbox[1]*resize_scale)
+            scaled_w = int(bbox[2]*resize_scale)
+            scaled_h = int(bbox[3]*resize_scale)
+            if scaled_w <= 1 or scaled_h <= 1:  # when <= 1, the bbox is meaningless
+                continue
+            scaled_bboxes.append([scaled_x, scaled_y, scaled_w, scaled_h])
+
+        target_bbox = random.choice(scaled_bboxes) if len(scaled_bboxes) > 0 else [0, 0, image.shape[1], image.shape[0]]
 
         w_range = self._crop_size - target_bbox[2]
         h_range = self._crop_size - target_bbox[3]
@@ -113,12 +123,12 @@ class RandomBBoxCropRegionSampler(BaseRegionSampler):
 
         new_bboxes = []
         new_labels = []
-        for i, bbox in enumerate(bboxes):
+        for i, bbox in enumerate(scaled_bboxes):
             new_x = max(0, bbox[0] - crop_x)
             new_y = max(0, bbox[1] - crop_y)
-            new_w = min(self._crop_size, bbox[0] + bbox[2] - crop_x) - new_x
-            new_h = min(self._crop_size, bbox[1] + bbox[3] - crop_y) - new_y
-            if new_w <= 0 or new_x >= self._crop_size or new_h <= 0 or new_y >= self._crop_size:
+            new_w = min(self._crop_size, bbox[0] + bbox[2] - crop_x) - new_x - 1
+            new_h = min(self._crop_size, bbox[1] + bbox[3] - crop_y) - new_y - 1
+            if new_w <= 1 or new_x >= self._crop_size or new_h <= 1 or new_y >= self._crop_size:
                 continue
             new_bboxes.append([new_x, new_y, new_w, new_h])
             new_labels.append(labels[i])

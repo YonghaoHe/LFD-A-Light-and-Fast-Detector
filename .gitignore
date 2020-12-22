@@ -7,3 +7,6 @@
 /lfd/model/backbone/pretrained_backbone_weights/*
 !/lfd/model/backbone/pretrained_backbone_weights/*.md
 /build/
+
+/WIDERFACE_train/*
+!/WIDERFACE_train/*.py

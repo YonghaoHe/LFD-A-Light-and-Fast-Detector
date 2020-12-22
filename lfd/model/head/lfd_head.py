@@ -7,6 +7,16 @@ import torch.nn as nn
 __all__ = ['LFDHead']
 
 
+class Scale(nn.Module):
+    def __init__(self,
+                 scale_factor=1.0):
+        super(Scale, self).__init__()
+        self._scale = nn.Parameter(torch.tensor(scale_factor, dtype=torch.float))
+
+    def forward(self, x):
+        return x * self._scale
+
+
 def get_operator_from_cfg(operator_cfg):
     operator_cfg_copy = operator_cfg.copy()
     construct_str = 'nn.'
@@ -28,12 +38,14 @@ class LFDHead(nn.Module):
                  num_conv_layers=2,
                  activation_cfg=dict(type='ReLU', inplace=True),
                  norm_cfg=dict(type='BatchNorm2d'),
-                 classification_loss_type='FocalLoss',
+                 classification_loss_type='SmoothL1Loss',
+                 regression_loss_type='SmoothL1Loss',
                  share_head_flag=False,
                  merge_path_flag=False,
                  ):
         super(LFDHead, self).__init__()
         assert classification_loss_type in ['BCEWithLogitsLoss', 'FocalLoss', 'CrossEntropyLoss']
+        assert regression_loss_type in ['SmoothL1Loss', 'MSELoss', 'IoULoss', 'GIoULoss', 'DIoULoss', 'CIoULoss']
 
         self._num_classes = num_classes
         self._num_input_channels = num_input_channels
@@ -45,6 +57,7 @@ class LFDHead(nn.Module):
         self._merge_path_flag = merge_path_flag
         self._num_heads = num_heads
         self._classification_loss_type = classification_loss_type
+        self._regression_loss_type = regression_loss_type
 
         for i in range(self._num_heads):
             if i == 0:

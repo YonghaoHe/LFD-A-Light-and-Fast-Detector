@@ -59,6 +59,8 @@ class LFDHead(nn.Module):
         self._classification_loss_type = classification_loss_type
         self._regression_loss_type = regression_loss_type
 
+        self._scales = [Scale(1.0) for _ in range(num_heads)]
+
         for i in range(self._num_heads):
             if i == 0:
                 classification_path, regression_path, merge_path = self._build_head()
@@ -169,6 +171,9 @@ class LFDHead(nn.Module):
 
             classification_output = getattr(self, 'head%d_classification_path' % i)(classification_input)
             regression_output = getattr(self, 'head%d_regression_path' % i)(regression_input)
+
+            if self._regression_loss_type in ['IoULoss', 'GIoULoss', 'DIoULoss', 'CIoULoss']:
+                regression_output = self._scales[i](regression_output)
 
             classification_outputs.append(classification_output)
             regression_outputs.append(regression_output)

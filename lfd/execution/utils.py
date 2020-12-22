@@ -4,6 +4,8 @@
 
 import os
 import sys
+import traceback
+import datetime
 import time
 import random
 import logging as _logging
@@ -13,7 +15,7 @@ import numpy
 import torchvision
 import torch
 import torch.distributed as dist
-__all__ = ['load_checkpoint', 'save_checkpoint', 'collect_envs', 'get_logger', 'get_root_logger', 'set_cudnn_backend', 'set_random_seed', 'AverageMeter']
+__all__ = ['load_checkpoint', 'save_checkpoint', 'collect_envs', 'get_logger', 'get_root_logger', 'set_cudnn_backend', 'set_random_seed', 'AverageMeter', 'customize_exception_hook']
 
 
 def load_checkpoint(model,
@@ -234,6 +236,24 @@ def get_root_logger(log_file=None, log_level=_logging.INFO):
     logger.addHandler(console_handler)
 
     return logger
+
+
+def customize_exception_hook(exception_log_path):
+    log_file = open(exception_log_path, 'a')
+
+    def _hook(exception_type, value, traceback_info):
+        trace_list = traceback.format_tb(traceback_info)
+
+        exception_info = repr(exception_type) + '\n'
+        exception_info += repr(value) + '\n'
+        for line in trace_list:
+            exception_info += line + '\n'
+
+        print(exception_info, file=sys.stderr)
+        print(datetime.datetime.now(), file=log_file)
+        print(exception_info, file=log_file)
+
+    return _hook
 
 
 def set_cudnn_backend(benchmark=True):

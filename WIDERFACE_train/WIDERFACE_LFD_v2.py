@@ -64,7 +64,7 @@ def prepare_common_settings():
     assert isinstance(config_dict['gpu_list'], list)
 
     # display interval in iterations
-    config_dict['display_interval'] = 1
+    config_dict['display_interval'] = 5
 
     # checkpoint save interval in epochs
     config_dict['save_interval'] = 50
@@ -135,21 +135,21 @@ def prepare_model():
     #                                alpha=0.25,
     #                                reduction='mean',
     #                                loss_weight=1.0)
-    # classification_loss = CrossEntropyLoss(
-    #     reduction='mean',
-    #     loss_weight=1.0
-    # )
-    classification_loss = BCEWithLogitsLoss(
+    classification_loss = CrossEntropyLoss(
         reduction='mean',
         loss_weight=1.0
     )
+    # classification_loss = BCEWithLogitsLoss(
+    #     reduction='mean',
+    #     loss_weight=1.0
+    # )
 
     # regression_loss = SmoothL1Loss(
     #     beta=1.0,
     #     reduction='mean',
     #     loss_weight=1.0
     # )
-    regression_loss = IoULoss(
+    regression_loss = GIoULoss(
         eps=1e-6,
         reduction='mean',
         loss_weight=0.1
@@ -245,7 +245,7 @@ def prepare_optimizer():
     #                                             lr=config_dict['learning_rate'],
     #                                             weight_decay=config_dict['weight_decay'])
 
-    config_dict['optimizer_grad_clip_cfg'] = dict(max_norm=10, norm_type=2)
+    config_dict['optimizer_grad_clip_cfg'] = None  # dict(max_norm=100, norm_type=1)
 
     # multi step lr scheduler is used here
     config_dict['milestones'] = [150, 250]
@@ -259,8 +259,8 @@ def prepare_optimizer():
     # add warmup parameters
     config_dict['warmup_setting'] = dict(by_epoch=False,
                                          warmup_mode=None,  # if no warmup needed, set warmup_mode = None
-                                         warmup_loops=200,
-                                         warmup_ratio=0.1)
+                                         warmup_loops=500,
+                                         warmup_ratio=0.01)
 
     assert isinstance(config_dict['warmup_setting'], dict) and 'by_epoch' in config_dict['warmup_setting'] and 'warmup_mode' in config_dict['warmup_setting'] \
            and 'warmup_loops' in config_dict['warmup_setting'] and 'warmup_ratio' in config_dict['warmup_setting']

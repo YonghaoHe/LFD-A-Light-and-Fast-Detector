@@ -6,5 +6,5 @@
 模块文件: __init__.py.py
 模块描述: 
 """
-from .fcos_head import FCOSHead
-from .lfd_head import LFDHead
+from .fcos_head import *
+from .lfd_head import *

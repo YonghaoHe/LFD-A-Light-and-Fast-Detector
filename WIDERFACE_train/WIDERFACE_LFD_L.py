@@ -27,7 +27,7 @@ memo = 'head不共享, head path进行merge' \
        '采用IoULoss作为回归loss，distance_to_bbox_mode为sigmoid, loss weight设置为0.1' \
        '使用梯度裁剪' \
        '使用了linear的lr warmup' \
-       '第一个head的尺度范围设置成[2,20]'
+       '第一个head的尺度范围设置成[0,20]'
 
 # all config parameters will be stored in config_dict
 config_dict = dict()
@@ -144,16 +144,16 @@ def prepare_model():
         loss_weight=1.0
     )
 
-    # regression_loss = SmoothL1Loss(
-    #     beta=1.0,
-    #     reduction='mean',
-    #     loss_weight=1.0
-    # )
-    regression_loss = IoULoss(
-        eps=1e-6,
+    regression_loss = SmoothL1Loss(
+        beta=1.0,
         reduction='mean',
-        loss_weight=0.1
+        loss_weight=1.0
     )
+    # regression_loss = GIoULoss(
+    #     eps=1e-6,
+    #     reduction='mean',
+    #     loss_weight=0.1
+    # )
 
     # number of classes
     config_dict['num_classes'] = 1
@@ -192,8 +192,7 @@ def prepare_model():
         norm_cfg=dict(type='BatchNorm2d'),
         share_head_flag=False,
         merge_path_flag=True,
-        classification_loss_type=type(classification_loss).__name__,
-        regression_loss_type=type(regression_loss).__name__
+        classification_loss_type=type(classification_loss).__name__
     )
 
     config_dict['model'] = LFD(
@@ -201,7 +200,7 @@ def prepare_model():
         neck=lfd_neck,
         head=lfd_head,
         num_classes=config_dict['num_classes'],
-        regression_ranges=((2, 20), (20, 40), (40, 80), (80, 160), (160, 320)),
+        regression_ranges=((0, 20), (20, 40), (40, 80), (80, 160), (160, 320)),
         gray_range_factors=(0.9, 1.1),
         point_strides=lfd_neck.num_output_strides_list,
         classification_loss_func=classification_loss,

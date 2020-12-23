@@ -59,7 +59,8 @@ class LFDHead(nn.Module):
         self._classification_loss_type = classification_loss_type
         self._regression_loss_type = regression_loss_type
 
-        self._scales = [Scale(1.0) for _ in range(num_heads)]
+        if self._regression_loss_type in ['IoULoss', 'GIoULoss', 'DIoULoss', 'CIoULoss']:
+            self._scales = nn.ModuleList([Scale(1.0) for _ in range(self._num_heads)])
 
         for i in range(self._num_heads):
             if i == 0:

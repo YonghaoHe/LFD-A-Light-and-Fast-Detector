@@ -9,4 +9,3 @@
 /build/
 
 /WIDERFACE_train/*
-!/WIDERFACE_train/*.py

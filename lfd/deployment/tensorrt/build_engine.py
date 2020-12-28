@@ -6,6 +6,18 @@ import numpy
 import pycuda.driver as cuda
 import pycuda.autoinit
 import tensorrt
+__all__ = ['MB', 'GB', 'build_tensorrt_engine']
+
+
+EXPLICIT_BATCH = 1 << (int)(tensorrt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
+
+
+def MB(val):
+    return val * 1 << 20
+
+
+def GB(val):
+    return val * 1 << 30
 
 
 class INT8Calibrator(tensorrt.IInt8EntropyCalibrator2):
@@ -62,8 +74,9 @@ class INT8Calibrator(tensorrt.IInt8EntropyCalibrator2):
 
 def build_tensorrt_engine(onnx_file_path,
                           engine_save_path,
-                          mode='fp32',
-                          max_workspace_size=1 << 30,
+                          precision_mode='fp32',
+                          max_workspace_size=GB(1),  # in bytes
+                          max_batch_size=1,
                           min_timing_iterations=2,
                           avg_timing_iterations=2,
                           int8_calibrator=None):
@@ -71,26 +84,26 @@ def build_tensorrt_engine(onnx_file_path,
 
     :param onnx_file_path:
     :param engine_save_path:
-    :param mode:
+    :param precision_mode:
     :param max_workspace_size: The maximum workspace size. The maximum GPU temporary memory which the engine can use at
+    :param max_batch_size:
     :param min_timing_iterations:
     :param avg_timing_iterations:
     :param int8_calibrator:
     :return:
     """
     assert os.path.exists(onnx_file_path)
-    assert mode in ['fp32', 'fp16', 'int8']
+    assert precision_mode in ['fp32', 'fp16', 'int8']
 
     trt_logger = tensorrt.Logger(tensorrt.Logger.VERBOSE)
 
     builder = tensorrt.Builder(trt_logger)
-    if mode == 'fp16':
+    if precision_mode == 'fp16':
         assert builder.platform_has_fast_fp16, 'platform does not support fp16 mode!'
-    if mode == 'int8':
+    if precision_mode == 'int8':
         assert builder.platform_has_fast_int8, 'platform does not support int8 mode!'
         assert int8_calibrator is not None, 'calibrator is not provided!'
 
-    EXPLICIT_BATCH = 1 << (int)(tensorrt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
     network = builder.create_network(EXPLICIT_BATCH)
 
     parser = tensorrt.OnnxParser(network, trt_logger)
@@ -107,10 +120,10 @@ def build_tensorrt_engine(onnx_file_path,
 
     config = builder.create_builder_config()
 
-    if mode == 'int8':
+    if precision_mode == 'int8':
         config.int8_calibrator = int8_calibrator
         config.set_flag(tensorrt.BuilderFlag.INT8)
-    elif mode == 'fp16':
+    elif precision_mode == 'fp16':
         config.set_flag(tensorrt.BuilderFlag.FP16)
     else:
         pass
@@ -118,12 +131,20 @@ def build_tensorrt_engine(onnx_file_path,
     config.max_workspace_size = max_workspace_size
     config.min_timing_iterations = min_timing_iterations
     config.avg_timing_iterations = avg_timing_iterations
+    builder.max_batch_size = max_batch_size
 
     engine = builder.build_engine(network, config)
+
+    if engine is None:
+        print('Engine build unsuccessfully!')
+        return
+
+    if not os.path.exists(os.path.dirname(engine_save_path)):
+        os.makedirs(os.path.dirname(engine_save_path))
 
     serialized_engine = engine.serialize()
     with open(engine_save_path, 'wb') as fout:
         fout.write(serialized_engine)
 
-    print('Engine generated successfully!')
+    print('Engine built successfully!')
 

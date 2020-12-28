@@ -9,3 +9,4 @@
 /build/
 
 /WIDERFACE_train/*
+/lfd/deployment/tensorrt/temp/*

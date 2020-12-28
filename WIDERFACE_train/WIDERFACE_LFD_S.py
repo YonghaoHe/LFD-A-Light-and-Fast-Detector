@@ -2,6 +2,7 @@
 # author: Yonghao He
 # description:
 import sys
+
 sys.path.append('../..')
 import shutil
 import os
@@ -22,12 +23,13 @@ from lfd.execution.utils import customize_exception_hook
 
 assert torch.cuda.is_available(), 'GPU training supported only!'
 
-memo = 'head不共享, head path进行merge' \
-       '采用CE作为分类loss' \
-       '采用IoULoss作为回归loss，distance_to_bbox_mode为sigmoid, loss weight设置为0.1' \
-       '使用梯度裁剪' \
+memo = 'WIDERFACE S 模型' \
+       'head不共享, 进行path merge, 使用BN' \
+       '采用CE作为分类loss, loss weight设置为1.' \
+       '采用IoULoss作为回归loss，distance_to_bbox_mode采用exp, loss weight设置为0.1' \
+       '不使用梯度裁剪' \
        '使用了linear的lr warmup' \
-       '第一个head的尺度范围设置成[0,20]'
+       '第一个head的尺度范围设置成[2,16]'
 
 # all config parameters will be stored in config_dict
 config_dict = dict()
@@ -64,7 +66,7 @@ def prepare_common_settings():
     assert isinstance(config_dict['gpu_list'], list)
 
     # display interval in iterations
-    config_dict['display_interval'] = 1
+    config_dict['display_interval'] = 2
 
     # checkpoint save interval in epochs
     config_dict['save_interval'] = 50
@@ -80,7 +82,7 @@ prepare data loader ------------------------------------------------------------
 
 def prepare_data_pipeline():
     # batch size
-    config_dict['batch_size'] = 12
+    config_dict['batch_size'] = 8
 
     # number of train data_loader workers
     config_dict['num_train_workers'] = 6
@@ -98,7 +100,7 @@ def prepare_data_pipeline():
         shuffle=True,
         ignore_last=False
     )
-    train_region_sampler = RandomBBoxCropRegionSampler(crop_size=480, resize_range=(0.5, 1.5))
+    train_region_sampler = RandomBBoxCropRegionSampler(crop_size=640, resize_range=(0.2, 3))
     config_dict['train_data_loader'] = DataLoader(dataset=train_dataset,
                                                   dataset_sampler=train_dataset_sampler,
                                                   region_sampler=train_region_sampler,
@@ -135,25 +137,25 @@ def prepare_model():
     #                                alpha=0.25,
     #                                reduction='mean',
     #                                loss_weight=1.0)
-    # classification_loss = CrossEntropyLoss(
+    classification_loss = CrossEntropyLoss(
+        reduction='mean',
+        loss_weight=1.0
+    )
+    # classification_loss = BCEWithLogitsLoss(
     #     reduction='mean',
     #     loss_weight=1.0
     # )
-    classification_loss = BCEWithLogitsLoss(
-        reduction='mean',
-        loss_weight=1.0
-    )
 
-    regression_loss = SmoothL1Loss(
-        beta=1.0,
-        reduction='mean',
-        loss_weight=1.0
-    )
-    # regression_loss = GIoULoss(
-    #     eps=1e-6,
+    # regression_loss = SmoothL1Loss(
+    #     beta=1.0,
     #     reduction='mean',
-    #     loss_weight=0.1
+    #     loss_weight=1.0
     # )
+    regression_loss = IoULoss(
+        eps=1e-6,
+        reduction='mean',
+        loss_weight=0.1
+    )
 
     # number of classes
     config_dict['num_classes'] = 1
@@ -164,9 +166,9 @@ def prepare_model():
         body_mode=None,  # affect body architecture
         input_channels=config_dict['num_input_channels'],
         stem_channels=64,
-        body_architecture=[3, 2, 2, 1, 1],
-        body_channels=[64, 64, 64, 128, 128],
-        out_indices=((0, 2), (1, 1), (2, 1), (3, 0), (4, 0)),
+        body_architecture=[2, 1, 1, 1, 2],
+        body_channels=[64, 64, 64, 128, 256],
+        out_indices=((0, 1), (1, 0), (2, 0), (3, 0), (4, 0), (4, 1)),
         frozen_stages=-1,
         activation_cfg=dict(type='ReLU', inplace=True),
         norm_cfg=dict(type='BatchNorm2d'),
@@ -187,12 +189,13 @@ def prepare_model():
         num_heads=len(lfd_neck.num_output_strides_list),
         num_input_channels=128,
         num_head_channels=128,
-        num_conv_layers=2,
+        num_conv_layers=1,
         activation_cfg=dict(type='ReLU', inplace=True),
         norm_cfg=dict(type='BatchNorm2d'),
         share_head_flag=False,
         merge_path_flag=True,
-        classification_loss_type=type(classification_loss).__name__
+        classification_loss_type=type(classification_loss).__name__,
+        regression_loss_type=type(regression_loss).__name__
     )
 
     config_dict['model'] = LFD(
@@ -200,12 +203,12 @@ def prepare_model():
         neck=lfd_neck,
         head=lfd_head,
         num_classes=config_dict['num_classes'],
-        regression_ranges=((0, 20), (20, 40), (40, 80), (80, 160), (160, 320)),
+        regression_ranges=((2, 16), (16, 32), (32, 64), (64, 128), (128, 256), (256, 512)),
         gray_range_factors=(0.9, 1.1),
         point_strides=lfd_neck.num_output_strides_list,
         classification_loss_func=classification_loss,
         regression_loss_func=regression_loss,
-        distance_to_bbox_mode='sigmoid',
+        distance_to_bbox_mode='exp',
         classification_threshold=0.05,
         nms_threshold=0.5,
         pre_nms_bbox_limit=1000,
@@ -257,8 +260,8 @@ def prepare_optimizer():
 
     # add warmup parameters
     config_dict['warmup_setting'] = dict(by_epoch=False,
-                                         warmup_mode=None,  # if no warmup needed, set warmup_mode = None
-                                         warmup_loops=200,
+                                         warmup_mode='linear',  # if no warmup needed, set warmup_mode = None
+                                         warmup_loops=100,
                                          warmup_ratio=0.1)
 
     assert isinstance(config_dict['warmup_setting'], dict) and 'by_epoch' in config_dict['warmup_setting'] and 'warmup_mode' in config_dict['warmup_setting'] \

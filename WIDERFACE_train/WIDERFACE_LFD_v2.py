@@ -10,7 +10,7 @@ import torch
 from lfd.execution.utils import set_random_seed, set_cudnn_backend
 from lfd.model.backbone import LFDResNet
 from lfd.model.neck import SimpleNeck
-from lfd.model.head import LFDHead
+from lfd.model.head import LFDHead, LFDHeadV1
 from lfd.model.losses import *
 from lfd.model import *
 from lfd.data_pipeline.data_loader import DataLoader
@@ -149,7 +149,7 @@ def prepare_model():
     #     reduction='mean',
     #     loss_weight=1.0
     # )
-    regression_loss = GIoULoss(
+    regression_loss = IoULoss(
         eps=1e-6,
         reduction='mean',
         loss_weight=0.1
@@ -189,12 +189,25 @@ def prepare_model():
         num_head_channels=128,
         num_conv_layers=2,
         activation_cfg=dict(type='ReLU', inplace=True),
-        norm_cfg=dict(type='BatchNorm2d'),
-        share_head_flag=False,
+        norm_cfg=dict(type='GroupNorm', num_groups=16),
+        share_head_flag=True,
         merge_path_flag=True,
         classification_loss_type=type(classification_loss).__name__,
         regression_loss_type=type(regression_loss).__name__
     )
+    # lfd_head = LFDHeadV1(
+    #     num_classes=config_dict['num_classes'],
+    #     num_heads=len(lfd_neck.num_output_strides_list),
+    #     num_input_channels=128,
+    #     num_head_channels=128,
+    #     num_conv_layers=2,
+    #     activation_cfg=dict(type='ReLU', inplace=True),
+    #     norm_cfg=dict(type='BatchNorm2d'),
+    #     share_head_flag=True,
+    #     merge_path_flag=True,
+    #     classification_loss_type=type(classification_loss).__name__,
+    #     regression_loss_type=type(regression_loss).__name__
+    # )
 
     config_dict['model'] = LFD(
         backbone=lfd_backbone,
@@ -206,7 +219,7 @@ def prepare_model():
         point_strides=lfd_neck.num_output_strides_list,
         classification_loss_func=classification_loss,
         regression_loss_func=regression_loss,
-        distance_to_bbox_mode='sigmoid',
+        distance_to_bbox_mode='exp',
         classification_threshold=0.05,
         nms_threshold=0.5,
         pre_nms_bbox_limit=1000,

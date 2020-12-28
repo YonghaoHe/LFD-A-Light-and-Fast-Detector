@@ -7,12 +7,12 @@ from lfd.execution.utils import load_checkpoint
 from lfd.data_pipeline.augmentation import *
 import cv2
 
-from WIDERFACE_train.WIDERFACE_LFD_v2_work_dir_20201222_170135.WIDERFACE_LFD_v2 import config_dict, prepare_model
+from WIDERFACE_train.WIDERFACE_LFD_S_work_dir_20201226_221628.WIDERFACE_LFD_S import config_dict, prepare_model
 
 
 prepare_model()
 
-param_file_path = './WIDERFACE_LFD_v2_work_dir_20201222_170135/epoch_300.pth'
+param_file_path = './WIDERFACE_LFD_S_work_dir_20201226_221628/epoch_250.pth'
 
 load_checkpoint(config_dict['model'], load_path=param_file_path, strict=True)
 

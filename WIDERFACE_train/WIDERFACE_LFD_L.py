@@ -2,6 +2,7 @@
 # author: Yonghao He
 # description:
 import sys
+
 sys.path.append('../..')
 import shutil
 import os
@@ -22,12 +23,11 @@ from lfd.execution.utils import customize_exception_hook
 
 assert torch.cuda.is_available(), 'GPU training supported only!'
 
-memo = 'head不共享, head path进行merge' \
+memo = 'WIDERFACE L 模型' \
+       'head不共享, head path进行merge, 使用BN' \
        '采用CE作为分类loss' \
        '采用IoULoss作为回归loss，distance_to_bbox_mode为sigmoid, loss weight设置为0.1' \
-       '使用梯度裁剪' \
-       '使用了linear的lr warmup' \
-       '第一个head的尺度范围设置成[0,20]'
+
 
 # all config parameters will be stored in config_dict
 config_dict = dict()
@@ -98,7 +98,7 @@ def prepare_data_pipeline():
         shuffle=True,
         ignore_last=False
     )
-    train_region_sampler = RandomBBoxCropRegionSampler(crop_size=480, resize_range=(0.5, 1.5))
+    train_region_sampler = RandomBBoxCropRegionSampler(crop_size=480, resize_range=(0.5, 2))
     config_dict['train_data_loader'] = DataLoader(dataset=train_dataset,
                                                   dataset_sampler=train_dataset_sampler,
                                                   region_sampler=train_region_sampler,
@@ -135,38 +135,38 @@ def prepare_model():
     #                                alpha=0.25,
     #                                reduction='mean',
     #                                loss_weight=1.0)
-    # classification_loss = CrossEntropyLoss(
+    classification_loss = CrossEntropyLoss(
+        reduction='mean',
+        loss_weight=1.0
+    )
+    # classification_loss = BCEWithLogitsLoss(
     #     reduction='mean',
     #     loss_weight=1.0
     # )
-    classification_loss = BCEWithLogitsLoss(
-        reduction='mean',
-        loss_weight=1.0
-    )
 
-    regression_loss = SmoothL1Loss(
-        beta=1.0,
-        reduction='mean',
-        loss_weight=1.0
-    )
-    # regression_loss = GIoULoss(
-    #     eps=1e-6,
+    # regression_loss = SmoothL1Loss(
+    #     beta=1.0,
     #     reduction='mean',
-    #     loss_weight=0.1
+    #     loss_weight=1.0
     # )
+    regression_loss = IoULoss(
+        eps=1e-6,
+        reduction='mean',
+        loss_weight=0.1
+    )
 
     # number of classes
     config_dict['num_classes'] = 1
     config_dict['backbone_init_param_file_path'] = None  # if no pretrained weights, set to None
     lfd_backbone = LFDResNet(
         block_mode='faster',  # affect block type
-        stem_mode='faster',  # affect stem type
+        stem_mode='fast',  # affect stem type
         body_mode=None,  # affect body architecture
         input_channels=config_dict['num_input_channels'],
         stem_channels=64,
-        body_architecture=[3, 2, 2, 1, 1],
+        body_architecture=[4, 2, 2, 1, 1],
         body_channels=[64, 64, 64, 128, 128],
-        out_indices=((0, 2), (1, 1), (2, 1), (3, 0), (4, 0)),
+        out_indices=((0, 3), (1, 1), (2, 1), (3, 0), (4, 0)),
         frozen_stages=-1,
         activation_cfg=dict(type='ReLU', inplace=True),
         norm_cfg=dict(type='BatchNorm2d'),
@@ -192,7 +192,8 @@ def prepare_model():
         norm_cfg=dict(type='BatchNorm2d'),
         share_head_flag=False,
         merge_path_flag=True,
-        classification_loss_type=type(classification_loss).__name__
+        classification_loss_type=type(classification_loss).__name__,
+        regression_loss_type=type(regression_loss).__name__
     )
 
     config_dict['model'] = LFD(
@@ -200,12 +201,12 @@ def prepare_model():
         neck=lfd_neck,
         head=lfd_head,
         num_classes=config_dict['num_classes'],
-        regression_ranges=((0, 20), (20, 40), (40, 80), (80, 160), (160, 320)),
+        regression_ranges=((2, 20), (20, 40), (40, 80), (80, 160), (160, 320)),
         gray_range_factors=(0.9, 1.1),
         point_strides=lfd_neck.num_output_strides_list,
         classification_loss_func=classification_loss,
         regression_loss_func=regression_loss,
-        distance_to_bbox_mode='sigmoid',
+        distance_to_bbox_mode='exp',
         classification_threshold=0.05,
         nms_threshold=0.5,
         pre_nms_bbox_limit=1000,
@@ -244,7 +245,7 @@ def prepare_optimizer():
     #                                             lr=config_dict['learning_rate'],
     #                                             weight_decay=config_dict['weight_decay'])
 
-    config_dict['optimizer_grad_clip_cfg'] = dict(max_norm=10, norm_type=2)
+    config_dict['optimizer_grad_clip_cfg'] = None  # dict(max_norm=10, norm_type=2)
 
     # multi step lr scheduler is used here
     config_dict['milestones'] = [150, 250]
@@ -257,8 +258,8 @@ def prepare_optimizer():
 
     # add warmup parameters
     config_dict['warmup_setting'] = dict(by_epoch=False,
-                                         warmup_mode=None,  # if no warmup needed, set warmup_mode = None
-                                         warmup_loops=200,
+                                         warmup_mode='linear',  # if no warmup needed, set warmup_mode = None
+                                         warmup_loops=100,
                                          warmup_ratio=0.1)
 
     assert isinstance(config_dict['warmup_setting'], dict) and 'by_epoch' in config_dict['warmup_setting'] and 'warmup_mode' in config_dict['warmup_setting'] \

@@ -27,9 +27,7 @@ memo = 'WIDERFACE S 模型' \
        'head不共享, 进行path merge, 使用BN' \
        '采用CE作为分类loss, loss weight设置为1.' \
        '采用IoULoss作为回归loss，distance_to_bbox_mode采用exp, loss weight设置为0.1' \
-       '不使用梯度裁剪' \
-       '使用了linear的lr warmup' \
-       '第一个head的尺度范围设置成[2,16]'
+
 
 # all config parameters will be stored in config_dict
 config_dict = dict()
@@ -100,7 +98,7 @@ def prepare_data_pipeline():
         shuffle=True,
         ignore_last=False
     )
-    train_region_sampler = RandomBBoxCropRegionSampler(crop_size=640, resize_range=(0.2, 3))
+    train_region_sampler = RandomBBoxCropRegionSampler(crop_size=480, resize_range=(0.5, 2))
     config_dict['train_data_loader'] = DataLoader(dataset=train_dataset,
                                                   dataset_sampler=train_dataset_sampler,
                                                   region_sampler=train_region_sampler,
@@ -166,9 +164,9 @@ def prepare_model():
         body_mode=None,  # affect body architecture
         input_channels=config_dict['num_input_channels'],
         stem_channels=64,
-        body_architecture=[2, 1, 1, 1, 2],
-        body_channels=[64, 64, 64, 128, 256],
-        out_indices=((0, 1), (1, 0), (2, 0), (3, 0), (4, 0), (4, 1)),
+        body_architecture=[2, 1, 1, 2],
+        body_channels=[64, 64, 64, 128],
+        out_indices=((0, 1), (1, 0), (2, 0), (3, 0), (3, 1)),
         frozen_stages=-1,
         activation_cfg=dict(type='ReLU', inplace=True),
         norm_cfg=dict(type='BatchNorm2d'),
@@ -189,7 +187,7 @@ def prepare_model():
         num_heads=len(lfd_neck.num_output_strides_list),
         num_input_channels=128,
         num_head_channels=128,
-        num_conv_layers=1,
+        num_conv_layers=2,
         activation_cfg=dict(type='ReLU', inplace=True),
         norm_cfg=dict(type='BatchNorm2d'),
         share_head_flag=False,
@@ -203,7 +201,7 @@ def prepare_model():
         neck=lfd_neck,
         head=lfd_head,
         num_classes=config_dict['num_classes'],
-        regression_ranges=((2, 16), (16, 32), (32, 64), (64, 128), (128, 256), (256, 512)),
+        regression_ranges=((2, 20), (20, 40), (40, 80), (80, 160), (160, 320)),
         gray_range_factors=(0.9, 1.1),
         point_strides=lfd_neck.num_output_strides_list,
         classification_loss_func=classification_loss,
@@ -247,7 +245,7 @@ def prepare_optimizer():
     #                                             lr=config_dict['learning_rate'],
     #                                             weight_decay=config_dict['weight_decay'])
 
-    config_dict['optimizer_grad_clip_cfg'] = dict(max_norm=10, norm_type=2)
+    config_dict['optimizer_grad_clip_cfg'] = None  # dict(max_norm=10, norm_type=2)
 
     # multi step lr scheduler is used here
     config_dict['milestones'] = [150, 250]

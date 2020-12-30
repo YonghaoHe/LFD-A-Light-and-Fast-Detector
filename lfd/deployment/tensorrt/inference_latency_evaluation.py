@@ -9,7 +9,6 @@
 import os
 import numpy
 import time
-import shutil
 import torch
 import onnx
 import pycuda.driver as cuda
@@ -74,8 +73,24 @@ def inference_latency_evaluation(model,
                                  output_names,
                                  precision_mode='fp32',
                                  max_workspace_size=GB(1),
+                                 min_timing_iterations=2,
+                                 avg_timing_iterations=2,
                                  int8_calibrator=None,
                                  timing_loops=100):
+    '''
+
+    :param model: the net to be evaluated (torch.Module)
+    :param input_shapes: list of input shapes in [N, C, H, W], e.g., [[1, 3, 480, 640]]
+    :param input_names: list of input names, e.g., ['input_data']
+    :param output_names: list of output names, the number of names should be the same as that of model
+    :param precision_mode: choose from 'fp32', 'fp16', 'int8'
+    :param max_workspace_size:
+    :param min_timing_iterations:
+    :param avg_timing_iterations:
+    :param int8_calibrator:
+    :param timing_loops:
+    :return:
+    '''
     temp_onnx_file_path = os.path.join(os.path.dirname(__file__), 'temp', 'temp.onnx')
     if not os.path.exists(os.path.dirname(temp_onnx_file_path)):
         os.makedirs(os.path.dirname(temp_onnx_file_path))
@@ -101,8 +116,8 @@ def inference_latency_evaluation(model,
                           precision_mode=precision_mode,
                           max_workspace_size=max_workspace_size,  # in bytes
                           max_batch_size=input_shapes[0][0],
-                          min_timing_iterations=2,
-                          avg_timing_iterations=2,
+                          min_timing_iterations=min_timing_iterations,
+                          avg_timing_iterations=avg_timing_iterations,
                           int8_calibrator=int8_calibrator)
 
     timing_engine(engine_file_path=temp_engine_save_path,
@@ -111,4 +126,3 @@ def inference_latency_evaluation(model,
                   height=input_shapes[0][2],
                   width=input_shapes[0][3],
                   timing_loops=timing_loops)
-

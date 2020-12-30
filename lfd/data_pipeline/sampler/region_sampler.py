@@ -11,7 +11,7 @@ import random
 import numpy
 import cv2
 
-__all__ = ['BaseRegionSampler', 'TypicalCOCOTrainingRegionSampler', 'RandomBBoxCropRegionSampler', 'IdleRegionSampler']
+__all__ = ['BaseRegionSampler', 'TypicalCOCOTrainingRegionSampler', 'RandomBBoxCropRegionSampler', 'RandomBBoxCropWithScaleSelectionRegionSampler', 'IdleRegionSampler']
 
 
 class BaseRegionSampler(object):
@@ -101,18 +101,110 @@ class RandomBBoxCropRegionSampler(BaseRegionSampler):
         bboxes = sample['bboxes'] if 'bboxes' in sample else []
         labels = sample['bbox_labels'] if 'bbox_labels' in sample else []
 
-        # rescale bboxes and filter ones with w&h <= 1
+        # rescale bboxes
         scaled_bboxes = []
         for bbox in bboxes:
             scaled_x = int(bbox[0] * resize_scale)
             scaled_y = int(bbox[1] * resize_scale)
             scaled_w = math.ceil(bbox[2] * resize_scale)
             scaled_h = math.ceil(bbox[3] * resize_scale)
-            if scaled_w <= 1 or scaled_h <= 1:  # when <= 1, the bbox is meaningless
-                continue
             scaled_bboxes.append([scaled_x, scaled_y, scaled_w, scaled_h])
 
         target_bbox = random.choice(scaled_bboxes) if len(scaled_bboxes) > 0 else [0, 0, image.shape[1], image.shape[0]]
+
+        w_range = self._crop_size - target_bbox[2]
+        h_range = self._crop_size - target_bbox[3]
+
+        crop_x = target_bbox[0] - random.randint(min(0, w_range), max(0, w_range))
+        crop_y = target_bbox[1] - random.randint(min(0, h_range), max(0, h_range))
+
+        crop_region = (crop_x, crop_y, self._crop_size, self._crop_size)
+
+        new_bboxes = []
+        new_labels = []
+        for i, bbox in enumerate(scaled_bboxes):
+            new_x = max(0, bbox[0] - crop_x)
+            new_y = max(0, bbox[1] - crop_y)
+            new_w = min(self._crop_size, bbox[0] + bbox[2] - crop_x) - new_x - 1
+            new_h = min(self._crop_size, bbox[1] + bbox[3] - crop_y) - new_y - 1
+            if new_w <= 1 or new_x >= self._crop_size or new_h <= 1 or new_y >= self._crop_size:
+                continue
+            new_bboxes.append([new_x, new_y, new_w, new_h])
+            new_labels.append(labels[i])
+
+        sample['image'] = crop_from_image(image, crop_region)
+        if len(new_bboxes) > 0:
+            sample['bboxes'] = new_bboxes
+            sample['bbox_labels'] = new_labels
+        else:  # if 'bboxes' is originally in sample, it should be deleted here when len(new_bboxes)==0
+            if 'bboxes' in sample:
+                del sample['bboxes'], sample['bbox_labels']
+
+        return sample
+
+
+class RandomBBoxCropWithScaleSelectionRegionSampler(BaseRegionSampler):
+    """
+    workflow:
+    1, randomly select a bbox
+    2, select a scale for detecting the selected bbox based on certain rules
+
+    """
+
+    def __init__(self, crop_size, detection_scales, scale_selection_probs=None, lock_threshold=None):
+        assert isinstance(crop_size, int)
+        assert isinstance(detection_scales, (tuple, list))
+        if scale_selection_probs is not None:
+            assert len(detection_scales) == len(scale_selection_probs)
+        if lock_threshold is not None:
+            assert isinstance(lock_threshold, int)
+
+        self._crop_size = crop_size
+        self._detection_scales = detection_scales
+        self._scale_lower_bound = self._detection_scales[0][0]
+        self._scale_selection_probs = scale_selection_probs
+        if self._scale_selection_probs is None:
+            self._scale_selection_probs = [1./len(self._detection_scales) for _ in range(len(self._detection_scales))]
+        else:
+            self._scale_selection_probs = [p/sum(self._scale_selection_probs) for p in self._scale_selection_probs]
+
+        self._lock_threshold = lock_threshold
+
+    def __call__(self, sample):
+        assert 'image' in sample
+
+        image = sample['image']
+        bboxes = sample['bboxes'] if 'bboxes' in sample else []
+        labels = sample['bbox_labels'] if 'bbox_labels' in sample else []
+
+        # determine target scale
+        target_bbox_index = -1
+        if len(bboxes) > 0:
+            target_bbox_index = random.randint(0, len(bboxes)-1)
+            selected_bbox = bboxes[target_bbox_index]
+            longer_side = max(selected_bbox[-2:])
+            longer_side = max(self._scale_lower_bound, longer_side)
+            if self._lock_threshold and longer_side <= self._lock_threshold:
+                target_length = random.randint(self._scale_lower_bound, longer_side)
+                resize_scale = target_length / longer_side
+            else:
+                target_scale = random.choices(self._detection_scales, self._scale_selection_probs)[0]
+                target_length = random.randint(target_scale[0], target_scale[1])
+                resize_scale = target_length / longer_side
+        else:
+            resize_scale = random.random() + 0.5  # [0.5, 1.5]
+
+        image = cv2.resize(image, (0, 0), fx=resize_scale, fy=resize_scale)
+        # rescale bboxes
+        scaled_bboxes = []
+        for bbox in bboxes:
+            scaled_x = int(bbox[0] * resize_scale)
+            scaled_y = int(bbox[1] * resize_scale)
+            scaled_w = math.ceil(bbox[2] * resize_scale)
+            scaled_h = math.ceil(bbox[3] * resize_scale)
+            scaled_bboxes.append([scaled_x, scaled_y, scaled_w, scaled_h])
+
+        target_bbox = scaled_bboxes[target_bbox_index] if len(scaled_bboxes) > 0 else [0, 0, image.shape[1], image.shape[0]]
 
         w_range = self._crop_size - target_bbox[2]
         h_range = self._crop_size - target_bbox[3]

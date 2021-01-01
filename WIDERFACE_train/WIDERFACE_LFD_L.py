@@ -50,7 +50,7 @@ def prepare_common_settings():
     sys.excepthook = customize_exception_hook(os.path.join(config_dict['work_dir'], 'exception_log_' + config_dict['timestamp'] + '.log'))
 
     # training epochs
-    config_dict['training_epochs'] = 300
+    config_dict['training_epochs'] = 1000
 
     # reproductive
     config_dict['seed'] = 10
@@ -67,57 +67,11 @@ def prepare_common_settings():
     config_dict['display_interval'] = 1
 
     # checkpoint save interval in epochs
-    config_dict['save_interval'] = 50
+    config_dict['save_interval'] = 100
 
     # validation interval in epochs
     config_dict['val_interval'] = 0
 
-
-'''
-prepare data loader -----------------------------------------------------------------------------------------
-'''
-
-
-def prepare_data_pipeline():
-    # batch size
-    config_dict['batch_size'] = 12
-
-    # number of train data_loader workers
-    config_dict['num_train_workers'] = 6
-
-    # number of val data_loader workers
-    config_dict['num_val_workers'] = 0
-
-    # construct train data_loader
-    config_dict['train_dataset_path'] = '../code_test/WIDERFACE_pack/widerface_train.pkl'
-    train_dataset = Dataset(load_path=config_dict['train_dataset_path'])
-    train_dataset_sampler = RandomWithNegDatasetSampler(
-        train_dataset,
-        batch_size=config_dict['batch_size'],
-        neg_ratio=0.2,
-        shuffle=True,
-        ignore_last=False
-    )
-    train_region_sampler = RandomBBoxCropRegionSampler(crop_size=480, resize_range=(0.5, 2))
-    config_dict['train_data_loader'] = DataLoader(dataset=train_dataset,
-                                                  dataset_sampler=train_dataset_sampler,
-                                                  region_sampler=train_region_sampler,
-                                                  augmentation_pipeline=simple_widerface_train_pipeline,
-                                                  num_workers=config_dict['num_train_workers'])
-
-    # construct val data_loader
-    # config_dict['val_dataset_path'] = 'xxxxxxxxxx'
-    # val_dataset = Dataset(load_path=config_dict['val_dataset_path'])
-    # val_dataset_sampler = RandomDatasetSampler(dataset=val_dataset,
-    #                                            batch_size=config_dict['batch_size'],
-    #                                            shuffle=False,
-    #                                            ignore_last=False)
-    # val_region_sampler = IdleRegionSampler()
-    # config_dict['val_data_loader'] = DataLoader(dataset=val_dataset,
-    #                                             dataset_sampler=val_dataset_sampler,
-    #                                             region_sampler=val_region_sampler,
-    #                                             augmentation_pipeline=simple_widerface_val_pipeline,
-    #                                             num_workers=config_dict['num_val_workers'])
 
 
 '''
@@ -195,13 +149,13 @@ def prepare_model():
         classification_loss_type=type(classification_loss).__name__,
         regression_loss_type=type(regression_loss).__name__
     )
-
+    config_dict['detection_scales'] = ((2, 20), (20, 40), (40, 80), (80, 160), (160, 320))
     config_dict['model'] = LFD(
         backbone=lfd_backbone,
         neck=lfd_neck,
         head=lfd_head,
         num_classes=config_dict['num_classes'],
-        regression_ranges=((2, 20), (20, 40), (40, 80), (80, 160), (160, 320)),
+        regression_ranges=config_dict['detection_scales'],
         gray_range_factors=(0.9, 1.1),
         point_strides=lfd_neck.num_output_strides_list,
         classification_loss_func=classification_loss,
@@ -226,6 +180,59 @@ def prepare_model():
     config_dict['evaluator'] = None
 
 
+
+'''
+prepare data loader -----------------------------------------------------------------------------------------
+'''
+
+
+def prepare_data_pipeline():
+    # batch size
+    config_dict['batch_size'] = 12
+
+    # number of train data_loader workers
+    config_dict['num_train_workers'] = 6
+
+    # number of val data_loader workers
+    config_dict['num_val_workers'] = 0
+
+    # construct train data_loader
+    config_dict['train_dataset_path'] = '../code_test/WIDERFACE_pack/widerface_train.pkl'
+    train_dataset = Dataset(load_path=config_dict['train_dataset_path'])
+    train_dataset_sampler = RandomWithNegDatasetSampler(
+        train_dataset,
+        batch_size=config_dict['batch_size'],
+        neg_ratio=0.2,
+        shuffle=True,
+        ignore_last=False
+    )
+    # train_region_sampler = RandomBBoxCropRegionSampler(crop_size=480, resize_range=(0.5, 2))
+
+    train_region_sampler = RandomBBoxCropWithScaleSelectionRegionSampler(crop_size=480,
+                                                                         detection_scales=config_dict['detection_scales'],
+                                                                         scale_selection_probs=[1, 1, 1, 1, 1],
+                                                                         lock_threshold=40)
+    config_dict['train_data_loader'] = DataLoader(dataset=train_dataset,
+                                                  dataset_sampler=train_dataset_sampler,
+                                                  region_sampler=train_region_sampler,
+                                                  augmentation_pipeline=simple_widerface_train_pipeline,
+                                                  num_workers=config_dict['num_train_workers'])
+
+    # construct val data_loader
+    # config_dict['val_dataset_path'] = 'xxxxxxxxxx'
+    # val_dataset = Dataset(load_path=config_dict['val_dataset_path'])
+    # val_dataset_sampler = RandomDatasetSampler(dataset=val_dataset,
+    #                                            batch_size=config_dict['batch_size'],
+    #                                            shuffle=False,
+    #                                            ignore_last=False)
+    # val_region_sampler = IdleRegionSampler()
+    # config_dict['val_data_loader'] = DataLoader(dataset=val_dataset,
+    #                                             dataset_sampler=val_dataset_sampler,
+    #                                             region_sampler=val_region_sampler,
+    #                                             augmentation_pipeline=simple_widerface_val_pipeline,
+    #                                             num_workers=config_dict['num_val_workers'])
+
+
 '''
 learning rate and optimizer --------------------------------------------------------------------------------
 optimizer and scheduler can be customized
@@ -248,7 +255,7 @@ def prepare_optimizer():
     config_dict['optimizer_grad_clip_cfg'] = None  # dict(max_norm=10, norm_type=2)
 
     # multi step lr scheduler is used here
-    config_dict['milestones'] = [150, 250]
+    config_dict['milestones'] = [500, 750, 900]
     config_dict['gamma'] = 0.1
     assert max(config_dict['milestones']) < config_dict['training_epochs'], 'the max value in milestones should be less than total epochs!'
 
@@ -259,7 +266,7 @@ def prepare_optimizer():
     # add warmup parameters
     config_dict['warmup_setting'] = dict(by_epoch=False,
                                          warmup_mode='linear',  # if no warmup needed, set warmup_mode = None
-                                         warmup_loops=100,
+                                         warmup_loops=200,
                                          warmup_ratio=0.1)
 
     assert isinstance(config_dict['warmup_setting'], dict) and 'by_epoch' in config_dict['warmup_setting'] and 'warmup_mode' in config_dict['warmup_setting'] \
@@ -269,9 +276,9 @@ def prepare_optimizer():
 if __name__ == '__main__':
     prepare_common_settings()
 
-    prepare_data_pipeline()
-
     prepare_model()
+
+    prepare_data_pipeline()
 
     prepare_optimizer()
 

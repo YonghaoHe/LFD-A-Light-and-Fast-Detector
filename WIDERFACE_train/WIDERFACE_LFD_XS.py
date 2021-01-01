@@ -52,7 +52,7 @@ def prepare_common_settings():
     config_dict['training_epochs'] = 1000
 
     # reproductive
-    config_dict['seed'] = 10
+    config_dict['seed'] = None
     config_dict['cudnn_benchmark'] = True
     if config_dict['seed'] is not None:
         set_random_seed(config_dict['seed'])
@@ -63,7 +63,7 @@ def prepare_common_settings():
     assert isinstance(config_dict['gpu_list'], list)
 
     # display interval in iterations
-    config_dict['display_interval'] = 5
+    config_dict['display_interval'] = 10
 
     # checkpoint save interval in epochs
     config_dict['save_interval'] = 100
@@ -82,15 +82,15 @@ def prepare_model():
     config_dict['num_input_channels'] = 3
 
     # loss functions
-    classification_loss = FocalLoss(use_sigmoid=True,
-                                    gamma=2.0,
-                                    alpha=0.25,
-                                    reduction='mean',
-                                    loss_weight=1.0)
-    # classification_loss = CrossEntropyLoss(
-    #     reduction='mean',
-    #     loss_weight=1.0
-    # )
+    # classification_loss = FocalLoss(use_sigmoid=True,
+    #                                 gamma=2.0,
+    #                                 alpha=0.25,
+    #                                 reduction='mean',
+    #                                 loss_weight=1.0)
+    classification_loss = CrossEntropyLoss(
+        reduction='mean',
+        loss_weight=1.0
+    )
     # classification_loss = BCEWithLogitsLoss(
     #     reduction='mean',
     #     loss_weight=1.0
@@ -104,7 +104,7 @@ def prepare_model():
     regression_loss = IoULoss(
         eps=1e-6,
         reduction='mean',
-        loss_weight=1
+        loss_weight=1.0
     )
 
     # number of classes
@@ -158,7 +158,7 @@ def prepare_model():
         point_strides=lfd_neck.num_output_strides_list,
         classification_loss_func=classification_loss,
         regression_loss_func=regression_loss,
-        distance_to_bbox_mode='exp',
+        distance_to_bbox_mode='sigmoid',
         classification_threshold=0.05,
         nms_threshold=0.5,
         pre_nms_bbox_limit=1000,
@@ -240,7 +240,7 @@ optimizer and scheduler can be customized
 
 
 def prepare_optimizer():
-    config_dict['learning_rate'] = 0.1
+    config_dict['learning_rate'] = 0.01
     config_dict['momentum'] = 0.9
     config_dict['weight_decay'] = 0.0001
     config_dict['optimizer'] = torch.optim.SGD(params=config_dict['model'].parameters(),
@@ -263,7 +263,7 @@ def prepare_optimizer():
     config_dict['warmup_setting'] = dict(by_epoch=False,
                                          warmup_mode='constant',  # if no warmup needed, set warmup_mode = None
                                          warmup_loops=200,
-                                         warmup_ratio=0.01)
+                                         warmup_ratio=0.1)
 
     assert isinstance(config_dict['warmup_setting'], dict) and 'by_epoch' in config_dict['warmup_setting'] and 'warmup_mode' in config_dict['warmup_setting'] \
            and 'warmup_loops' in config_dict['warmup_setting'] and 'warmup_ratio' in config_dict['warmup_setting']

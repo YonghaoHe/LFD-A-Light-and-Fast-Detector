@@ -210,7 +210,7 @@ def prepare_data_pipeline():
     train_region_sampler = RandomBBoxCropWithScaleSelectionRegionSampler(crop_size=480,
                                                                          detection_scales=config_dict['detection_scales'],
                                                                          scale_selection_probs=[1, 1, 1, 1, 1],
-                                                                         lock_threshold=40)
+                                                                         lock_threshold=30)
 
     config_dict['train_data_loader'] = DataLoader(dataset=train_dataset,
                                                   dataset_sampler=train_dataset_sampler,
@@ -240,7 +240,7 @@ optimizer and scheduler can be customized
 
 
 def prepare_optimizer():
-    config_dict['learning_rate'] = 0.01
+    config_dict['learning_rate'] = 0.1
     config_dict['momentum'] = 0.9
     config_dict['weight_decay'] = 0.0001
     config_dict['optimizer'] = torch.optim.SGD(params=config_dict['model'].parameters(),
@@ -248,7 +248,7 @@ def prepare_optimizer():
                                                momentum=config_dict['momentum'],
                                                weight_decay=config_dict['weight_decay'])
 
-    config_dict['optimizer_grad_clip_cfg'] = None  # dict(max_norm=10, norm_type=2)
+    config_dict['optimizer_grad_clip_cfg'] = dict(max_norm=10, norm_type=2, duration=1)
 
     # multi step lr scheduler is used here
     config_dict['milestones'] = [500, 750, 900]
@@ -261,7 +261,7 @@ def prepare_optimizer():
 
     # add warmup parameters
     config_dict['warmup_setting'] = dict(by_epoch=False,
-                                         warmup_mode='constant',  # if no warmup needed, set warmup_mode = None
+                                         warmup_mode='linear',  # if no warmup needed, set warmup_mode = None
                                          warmup_loops=200,
                                          warmup_ratio=0.1)
 

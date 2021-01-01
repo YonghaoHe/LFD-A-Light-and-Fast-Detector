@@ -7,16 +7,16 @@ from lfd.execution.utils import load_checkpoint
 from lfd.data_pipeline.augmentation import *
 import cv2
 
-from WIDERFACE_train.WIDERFACE_LFD_XS_work_dir_20201230_220238.WIDERFACE_LFD_XS import config_dict, prepare_model
+from WIDERFACE_train.WIDERFACE_LFD_XS_work_dir_20210101_183207.WIDERFACE_LFD_XS import config_dict, prepare_model
 
 
 prepare_model()
 
-param_file_path = './WIDERFACE_LFD_XS_work_dir_20201230_220238/epoch_900.pth'
+param_file_path = './WIDERFACE_LFD_XS_work_dir_20210101_183207/epoch_100.pth'
 
 load_checkpoint(config_dict['model'], load_path=param_file_path, strict=True)
 
-image_path = '../code_test/debug_images/WIDERFACE/worlds-largest-selfie1.jpg'
+image_path = '/home/yonghaohe/datasets/WIDER_FACE/WIDER_val/images/0--Parade/0_Parade_marchingband_1_156.jpg'
 image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
 
 results = config_dict['model'].predict_for_single_image(image, aug_pipeline=simple_widerface_val_pipeline, classification_threshold=0.5, nms_threshold=0.3)

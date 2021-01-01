@@ -317,8 +317,7 @@ class LFD(nn.Module):
         flatten_regression_target_tensor = flatten_regression_target_tensor[pos_indexes]
 
         # get classification loss
-        avg_factor = pos_indexes.nelement() + batch_size
-        classification_loss = self._classification_loss_func(flatten_predict_classification_tensor, flatten_classification_target_tensor, avg_factor=avg_factor)
+        classification_loss = self._classification_loss_func(flatten_predict_classification_tensor, flatten_classification_target_tensor, avg_factor=pos_indexes.nelement())
 
         # get regression loss
         if pos_indexes.nelement() > 0:

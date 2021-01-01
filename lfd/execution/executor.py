@@ -74,7 +74,8 @@ class Executor(object):
 
     def _register_optimizer_hook(self):
         optimizer_grad_clip_cfg = self.config_dict.get('optimizer_grad_clip_cfg', None)
-        optimizer_hook = OptimizerHook(optimizer_grad_clip_cfg)
+        training_epochs = self.config_dict['training_epochs']
+        optimizer_hook = OptimizerHook(optimizer_grad_clip_cfg, training_epochs)
         self._register_hook(optimizer_hook, 'NORMAL')
 
     def _register_speed_hook(self):

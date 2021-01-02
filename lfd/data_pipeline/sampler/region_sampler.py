@@ -151,22 +151,23 @@ class RandomBBoxCropWithScaleSelectionRegionSampler(BaseRegionSampler):
 
     """
 
-    def __init__(self, crop_size, detection_scales, scale_selection_probs=None, lock_threshold=None):
+    def __init__(self, crop_size, detection_ranges, range_selection_probs=None, lock_threshold=None):
         assert isinstance(crop_size, int)
-        assert isinstance(detection_scales, (tuple, list))
-        if scale_selection_probs is not None:
-            assert len(detection_scales) == len(scale_selection_probs)
+        assert isinstance(detection_ranges, (tuple, list))
+        if range_selection_probs is not None:
+            assert len(detection_ranges) == len(range_selection_probs)
         if lock_threshold is not None:
             assert isinstance(lock_threshold, int)
 
         self._crop_size = crop_size
-        self._detection_scales = detection_scales
-        self._scale_lower_bound = self._detection_scales[0][0]
-        self._scale_selection_probs = scale_selection_probs
-        if self._scale_selection_probs is None:
-            self._scale_selection_probs = [1./len(self._detection_scales) for _ in range(len(self._detection_scales))]
+        self._detection_ranges = detection_ranges
+        self._range_lower_bound = self._detection_ranges[0][0]
+        self._range_upper_bound = self._detection_ranges[-1][1]
+        self._range_selection_probs = range_selection_probs
+        if self._range_selection_probs is None:
+            self._range_selection_probs = [1. / len(self._detection_ranges) for _ in range(len(self._detection_ranges))]
         else:
-            self._scale_selection_probs = [p/sum(self._scale_selection_probs) for p in self._scale_selection_probs]
+            self._range_selection_probs = [p / sum(self._range_selection_probs) for p in self._range_selection_probs]
 
         self._lock_threshold = lock_threshold
 
@@ -183,14 +184,19 @@ class RandomBBoxCropWithScaleSelectionRegionSampler(BaseRegionSampler):
             target_bbox_index = random.randint(0, len(bboxes)-1)
             selected_bbox = bboxes[target_bbox_index]
             longer_side = max(selected_bbox[-2:])
-            longer_side = max(self._scale_lower_bound, longer_side)
-            if self._lock_threshold and longer_side <= self._lock_threshold:
-                target_length = random.randint(self._scale_lower_bound, longer_side)
+            if longer_side <= self._range_lower_bound or longer_side >= self._range_upper_bound:  # when longer side is too small or too large, do not resize
+                resize_scale = 1.0
+            elif self._lock_threshold and longer_side <= self._lock_threshold:
+                target_length = random.randint(self._range_lower_bound, longer_side)
                 resize_scale = target_length / longer_side
             else:
-                target_scale = random.choices(self._detection_scales, self._scale_selection_probs)[0]
-                target_length = random.randint(target_scale[0], target_scale[1])
-                resize_scale = target_length / longer_side
+                if random.random() > 0.95:
+                    target_length = self._range_upper_bound + random.randint(0, self._range_upper_bound * 0.5)
+                    resize_scale = target_length / longer_side
+                else:
+                    target_range = random.choices(self._detection_ranges, self._range_selection_probs)[0]
+                    target_length = random.randint(target_range[0], target_range[1])
+                    resize_scale = target_length / longer_side
         else:
             resize_scale = random.random() + 0.5  # [0.5, 1.5]
 

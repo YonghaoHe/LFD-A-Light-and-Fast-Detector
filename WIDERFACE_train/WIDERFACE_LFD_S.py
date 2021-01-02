@@ -205,8 +205,8 @@ def prepare_data_pipeline():
     )
     # train_region_sampler = RandomBBoxCropRegionSampler(crop_size=480, resize_range=(0.5, 2))
     train_region_sampler = RandomBBoxCropWithScaleSelectionRegionSampler(crop_size=480,
-                                                                         detection_scales=config_dict['detection_scales'],
-                                                                         scale_selection_probs=[1, 1, 1, 1, 1],
+                                                                         detection_ranges=config_dict['detection_scales'],
+                                                                         range_selection_probs=[1, 1, 1, 1, 1],
                                                                          lock_threshold=40)
     config_dict['train_data_loader'] = DataLoader(dataset=train_dataset,
                                                   dataset_sampler=train_dataset_sampler,

@@ -42,7 +42,7 @@ class LFD(nn.Module):
         self._num_classes = num_classes
         self._regression_ranges = regression_ranges
         self._gray_range_factors = (min(gray_range_factors), max(gray_range_factors))
-        self._gray_ranges = [(low * self._gray_range_factors[0], up * self._gray_range_factors[1]) for (low, up) in self._regression_ranges]
+        self._gray_ranges = [(int(low * self._gray_range_factors[0]), int(up * self._gray_range_factors[1])) for (low, up) in self._regression_ranges]
         self._num_heads = len(point_strides)
         self._point_strides = point_strides
 
@@ -317,7 +317,7 @@ class LFD(nn.Module):
         flatten_regression_target_tensor = flatten_regression_target_tensor[pos_indexes]
 
         # get classification loss
-        classification_loss = self._classification_loss_func(flatten_predict_classification_tensor, flatten_classification_target_tensor, avg_factor=pos_indexes.nelement())
+        classification_loss = self._classification_loss_func(flatten_predict_classification_tensor, flatten_classification_target_tensor, avg_factor=pos_indexes.nelement() + batch_size)
 
         # get regression loss
         if pos_indexes.nelement() > 0:
@@ -554,6 +554,8 @@ class LFD(nn.Module):
         classification_threshold = classification_threshold if classification_threshold is not None else self._classification_threshold
         max_scores = predicted_classification.max(dim=1)[0]
         selected_indexes = torch.where(max_scores > classification_threshold)[0]
+        if selected_indexes.numel() == 0:
+            return []
 
         predicted_classification = predicted_classification[selected_indexes]
         predicted_regression = predicted_regression[selected_indexes]
@@ -575,7 +577,7 @@ class LFD(nn.Module):
         else:
             if self._distance_to_bbox_mode == 'exp':
                 predicted_regression = predicted_regression.float().exp()
-                predicted_bboxes= self.distance2bbox(concat_point_coordinates, predicted_regression, max_shape=(image_height, image_width))
+                predicted_bboxes = self.distance2bbox(concat_point_coordinates, predicted_regression, max_shape=(image_height, image_width))
             elif self._distance_to_bbox_mode == 'sigmoid':
                 concat_regression_ranges_max = concat_regression_ranges.max(dim=-1)[0]
                 predicted_regression = predicted_regression.sigmoid() * concat_regression_ranges_max[..., None]

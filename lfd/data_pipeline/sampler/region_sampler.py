@@ -11,7 +11,7 @@ import random
 import numpy
 import cv2
 
-__all__ = ['BaseRegionSampler', 'TypicalCOCOTrainingRegionSampler', 'RandomBBoxCropRegionSampler', 'RandomBBoxCropWithScaleSelectionRegionSampler', 'IdleRegionSampler']
+__all__ = ['BaseRegionSampler', 'TypicalCOCOTrainingRegionSampler', 'RandomBBoxCropRegionSampler', 'RandomBBoxCropWithRangeSelectionRegionSampler', 'IdleRegionSampler']
 
 
 class BaseRegionSampler(object):
@@ -143,7 +143,7 @@ class RandomBBoxCropRegionSampler(BaseRegionSampler):
         return sample
 
 
-class RandomBBoxCropWithScaleSelectionRegionSampler(BaseRegionSampler):
+class RandomBBoxCropWithRangeSelectionRegionSampler(BaseRegionSampler):
     """
     workflow:
     1, randomly select a bbox
@@ -184,13 +184,13 @@ class RandomBBoxCropWithScaleSelectionRegionSampler(BaseRegionSampler):
             target_bbox_index = random.randint(0, len(bboxes)-1)
             selected_bbox = bboxes[target_bbox_index]
             longer_side = max(selected_bbox[-2:])
-            if longer_side <= self._range_lower_bound:  # when longer side is too small, do not resize
+            if longer_side <= self._range_lower_bound:
                 resize_scale = 1.0
             elif self._lock_threshold and longer_side <= self._lock_threshold:
                 target_length = random.randint(self._range_lower_bound, longer_side)
                 resize_scale = target_length / longer_side
             else:
-                if random.random() > 0.95:
+                if random.random() > 0.999:
                     target_length = self._range_upper_bound + random.randint(0, self._range_upper_bound * 0.5)
                     resize_scale = target_length / longer_side
                 else:

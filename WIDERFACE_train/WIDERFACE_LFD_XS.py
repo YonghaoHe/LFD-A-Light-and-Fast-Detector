@@ -121,7 +121,7 @@ def prepare_model():
         out_indices=((0, 1), (1, 0), (2, 0), (3, 0), (3, 1)),
         frozen_stages=-1,
         activation_cfg=dict(type='ReLU', inplace=True),
-        norm_cfg=None,  # dict(type='BatchNorm2d'),
+        norm_cfg=dict(type='BatchNorm2d'),
         init_with_weight_file=config_dict['backbone_init_param_file_path'],
         norm_eval=False
     )
@@ -130,7 +130,7 @@ def prepare_model():
         num_neck_channels=128,
         num_input_channels_list=lfd_backbone.num_output_channels_list,
         num_input_strides_list=lfd_backbone.num_output_strides_list,
-        norm_cfg=None,  # dict(type='BatchNorm2d'),
+        norm_cfg=dict(type='BatchNorm2d'),
         activation_cfg=dict(type='ReLU', inplace=True)
     )
 
@@ -141,7 +141,7 @@ def prepare_model():
         num_head_channels=128,
         num_conv_layers=2,
         activation_cfg=dict(type='ReLU', inplace=True),
-        norm_cfg=None,  # dict(type='BatchNorm2d'),
+        norm_cfg=dict(type='BatchNorm2d'),
         share_head_flag=False,
         merge_path_flag=True,
         classification_loss_type=type(classification_loss).__name__,
@@ -207,7 +207,7 @@ def prepare_data_pipeline():
 
     # train_region_sampler = RandomBBoxCropRegionSampler(crop_size=480, resize_range=(0.5, 2))
 
-    train_region_sampler = RandomBBoxCropWithScaleSelectionRegionSampler(crop_size=480,
+    train_region_sampler = RandomBBoxCropWithRangeSelectionRegionSampler(crop_size=480,
                                                                          detection_ranges=config_dict['detection_scales'],
                                                                          range_selection_probs=[1, 1, 1, 1, 1],
                                                                          lock_threshold=30)

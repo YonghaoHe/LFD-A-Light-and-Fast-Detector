@@ -190,7 +190,7 @@ class RandomBBoxCropWithRangeSelectionRegionSampler(BaseRegionSampler):
                 target_length = random.randint(self._range_lower_bound, longer_side)
                 resize_scale = target_length / longer_side
             else:
-                if random.random() > 0.999:
+                if longer_side >= self._range_upper_bound and random.random() > 0.9:
                     target_length = self._range_upper_bound + random.randint(0, self._range_upper_bound * 0.5)
                     resize_scale = target_length / longer_side
                 else:
@@ -198,7 +198,7 @@ class RandomBBoxCropWithRangeSelectionRegionSampler(BaseRegionSampler):
                     target_length = random.randint(target_range[0], target_range[1])
                     resize_scale = target_length / longer_side
         else:
-            resize_scale = random.random() + 0.5  # [0.5, 1.5]
+            resize_scale = random.random() * 2.5 + 0.5  # [0.5, 3]
 
         image = cv2.resize(image, (0, 0), fx=resize_scale, fy=resize_scale)
         # rescale bboxes

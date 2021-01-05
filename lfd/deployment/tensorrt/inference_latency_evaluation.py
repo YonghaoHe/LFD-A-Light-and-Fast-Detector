@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-# author: Yonghao He
-# description: 
+
 """
 ① convert model to onnx
 ② generate TRT engine
-③ run n loops for evluation
+③ run n loops for evaluation
 """
 import os
 import numpy

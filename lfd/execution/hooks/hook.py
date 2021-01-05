@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-# author: Yonghao He
-# description: base hook class
 
 from enum import Enum
 

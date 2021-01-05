@@ -1,12 +1,5 @@
 # -*- coding: utf-8 -*-
 
-"""
-作者: 何泳澔
-日期: 2020-06-03
-模块文件: cross_entropy_loss.py
-模块描述: 从mmdet中直接搬运过来
-"""
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

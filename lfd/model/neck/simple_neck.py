@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-# author: Yonghao He
-# description:
 
 import torch.nn as nn
 __all__ = ['SimpleNeck']

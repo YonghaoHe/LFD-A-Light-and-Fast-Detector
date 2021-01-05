@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-# author: Yonghao He
-# description: implement some auxiliary functions like logger, checkpoints...
 
 import os
 import sys

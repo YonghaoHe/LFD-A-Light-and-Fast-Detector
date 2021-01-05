@@ -23,17 +23,17 @@ def pack_coco(image_root_path, annotation_path, pack_save_path, filter_no_gt, fi
     print(dataset)
 
 
-def pack_coco_mini_for_debug(val_pkl_path, mini_pkl_save_path):
+def pack_coco_mini_for_debug(pkl_path, mini_pkl_save_path):
     """
     get a mini dataset for debug based on existed pkl files
     :return:
     """
-    assert os.path.exists(val_pkl_path), 'val pkl path does not exist!'
+    assert os.path.exists(pkl_path), 'val pkl path does not exist!'
 
     if not os.path.exists(os.path.dirname(mini_pkl_save_path)):
         os.makedirs(os.path.dirname(mini_pkl_save_path))
 
-    meta_info, index_annotation_dict, dataset = pickle.load(open(val_pkl_path, 'rb'))
+    meta_info, index_annotation_dict, dataset = pickle.load(open(pkl_path, 'rb'))
 
     new_index_annotation_dict = dict()
     new_dataset = dict()

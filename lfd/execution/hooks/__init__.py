@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-# author: Yonghao He
-# description: 
+
 from .hook import get_priority
 from .checkpoint_hook import CheckpointHook
 from .logger_hook import LoggerHook

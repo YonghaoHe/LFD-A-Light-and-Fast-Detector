@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
 
-"""
-作者: 何泳澔
-日期: 2020-05-20
-模块文件: augmentation_pipeline.py
-模块描述: 
-"""
 from albumentations import *
 
 __all__ = ['typical_coco_train_pipeline',
@@ -37,7 +31,9 @@ simple_normalize = Normalize(
     p=1.0
 )
 
-bbox_param = BboxParams(format='coco', label_fields=['bbox_labels'])  # x,y,w,h
+# bbox format setting, we use 'coco' style: x, y, w, h
+bbox_param = BboxParams(format='coco', label_fields=['bbox_labels'])
+
 coco_train_pipeline_with_bboxes = Compose([random_horizon_flip,
                                            caffe_imagenet_normalize],
                                           bbox_params=bbox_param,

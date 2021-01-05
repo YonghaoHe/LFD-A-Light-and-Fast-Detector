@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
 
-"""
-作者: 何泳澔
-日期: 2020-05-18
-模块文件: region_sampler.py
-模块描述: 
-"""
 import math
 import random
 import numpy
@@ -21,7 +15,7 @@ class BaseRegionSampler(object):
 
     def __call__(self, sample):
         """
-        given sample dict, replace 'image' key with certain region
+        given sample dict, replace 'image' key with a certain region
         :param sample:
         :return:
         """
@@ -31,8 +25,7 @@ class BaseRegionSampler(object):
 class TypicalCOCOTrainingRegionSampler(BaseRegionSampler):
     """
     this region sampler implements typical processing for coco dataset:
-    1) resize the image while keeping the aspect ratio, so that the shorter edge is changed to 800. If the longer edge exceeds 1333, keep the longer edge to 1333
-    2) the default output region size is (h, w) = (1333, 1333), make sure to contain all the cases
+    resize the image while keeping the aspect ratio, so that the shorter edge is changed to 800. If the longer edge exceeds 1333, keep the longer edge to 1333
     """
 
     def __init__(self, resize_shorter_range=(800,), resize_longer_limit=1333, pad_divisor=32):
@@ -57,12 +50,11 @@ class TypicalCOCOTrainingRegionSampler(BaseRegionSampler):
         im_resized = cv2.resize(im, (0, 0), fx=resize_scale, fy=resize_scale)
         if 'bboxes' in sample:
             bboxes = sample['bboxes']
-            # 这里需要保证新的bbox长宽大于等于1，并且bbox的范围不能超过图像的边界（让x，y向下取整）
+
             bboxes_resized = [[int(bbox[0] * resize_scale), int(bbox[1] * resize_scale), max(int(bbox[2] * resize_scale), 1), max(int(bbox[3] * resize_scale), 1)]
                               for bbox in bboxes]
             sample['bboxes'] = bboxes_resized
 
-        # 将缩放后的图像放入输入大小的左上角。 这里采用了crop的方式。
         target_height = math.ceil(im_resized.shape[0] / self._pad_divisor) * self._pad_divisor
         target_width = math.ceil(im_resized.shape[1] / self._pad_divisor) * self._pad_divisor
         crop_region = [0, 0, target_width, target_height]
@@ -80,7 +72,7 @@ class RandomBBoxCropRegionSampler(BaseRegionSampler):
     """
     workflow:
     1, randomly resize the image according to resize_range
-    2, (pos sample) randomly select a bbox, randomly choose a region with crop_size ,trying to contain the selected bbox
+    2, (pos sample) randomly select a bbox, randomly choose a region with crop_size, containing the selected bbox
        (neg sample) randomly crop a region with crop_size
     """
 
@@ -147,7 +139,9 @@ class RandomBBoxCropWithRangeSelectionRegionSampler(BaseRegionSampler):
     """
     workflow:
     1, randomly select a bbox
-    2, select a scale for detecting the selected bbox based on certain rules
+    2, select a proper scale for the box, and get the resize_scale
+    3, resize the image all bboxes according to eh resize_scale
+    4, crop a region containing the selected bbox with crop_size
 
     """
 
@@ -264,10 +258,9 @@ class IdleRegionSampler(BaseRegionSampler):
 
 def crop_from_image(image, crop_region):
     """
-    从图像中裁剪相应的区域
-    支持超过图像边界的裁剪，超过的部分补0
+    crop a region from the given image
     :param image:
-    :param crop_region:
+    :param crop_region: x, y , w, h
     :return:
     """
     im_w = image.shape[1]

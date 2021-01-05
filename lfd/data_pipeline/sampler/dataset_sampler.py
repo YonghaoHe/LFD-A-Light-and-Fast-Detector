@@ -124,9 +124,9 @@ class RandomWithNegDatasetSampler(BaseDatasetSampler):
 
     def __init__(self, dataset, batch_size=1, neg_ratio=0.1, shuffle=True, ignore_last=False):
 
-        assert len(dataset) > 0
-        assert batch_size <= len(dataset)
-        assert 0. <= neg_ratio <= 1
+        assert len(dataset) > 0, 'dataset is empty!'
+        assert batch_size <= len(dataset), 'the number of samples should larger than batch size!'
+        assert 0. <= neg_ratio <= 1, 'neg ratio should be in [0,1]!'
 
         self._batch_size = batch_size
         self._neg_ratio = neg_ratio

@@ -6,7 +6,7 @@ import os
 
 class Dataset(object):
     """
-    a dataset wrapper for save and load datasets
+    save and load datasets
     """
 
     def __init__(self, parser=None, save_path=None, load_path=None):
@@ -17,17 +17,17 @@ class Dataset(object):
         :param load_path:
         """
 
-        if load_path is not None:
+        if load_path is not None:  # perform saving dataset
             self._load_path = load_path
             assert os.path.exists(self._load_path), '[%s] path does not exist!' % self._load_path
             self.__load_dataset()
-        else:
+        else:  # perform loading dataset
             self._parser = parser
             self._save_path = save_path
             assert self._save_path is not None, 'When parser is provided, the save_path must be set!'
-            self.__build_dataset()
+            self._build_dataset()
 
-    def __build_dataset(self):
+    def _build_dataset(self):
         """
         build dataset
         :return:
@@ -66,7 +66,7 @@ class Dataset(object):
 
     def __len__(self):
         """
-        :return:
+        :return: the number of samples
         """
         return len(self._dataset)
 

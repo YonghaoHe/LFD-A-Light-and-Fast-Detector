@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
 
-"""
-作者: 何泳澔
-日期: 2020-05-23
-模块文件: fcos_head.py
-模块描述: 该模块仅仅实现 head 的网络结构
-"""
 import torch
 import torch.nn as nn
 import numpy
@@ -75,7 +69,6 @@ class FCOSHead(nn.Module):
             self._classification_path.append(nn.ReLU(inplace=True))
             self._regression_path.append(nn.ReLU(inplace=True))
 
-        # 添加最后分类层,centerness和回归层
         self._classification = nn.Conv2d(self._num_head_channels, self._num_classes, kernel_size=3, stride=1, padding=1, bias=True)
         self._centerness = nn.Conv2d(self._num_head_channels, 1, kernel_size=3, stride=1, padding=1, bias=True)
         self._regression = nn.Conv2d(self._num_head_channels, 4, kernel_size=3, stride=1, padding=1, bias=True)
@@ -85,7 +78,7 @@ class FCOSHead(nn.Module):
 
     def __bias_init_with_prob(self, prior_prob):
         """
-        这个函数从mmdet中照搬过来，用于初始化conv层中的bias值
+        ported from mmdetection
         :param prior_prob:
         :return:
         """

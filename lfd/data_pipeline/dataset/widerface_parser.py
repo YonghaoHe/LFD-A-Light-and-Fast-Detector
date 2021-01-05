@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-# author: Yonghao He
-# description: 
 
 import os
 from .sample import Sample

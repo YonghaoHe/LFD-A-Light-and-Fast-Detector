@@ -27,7 +27,7 @@ class LFD(nn.Module):
                  point_strides=(8, 16, 32, 64, 128),
                  classification_loss_func=None,
                  regression_loss_func=None,
-                 distance_to_bbox_mode='exp',
+                 distance_to_bbox_mode='sigmoid',
                  classification_threshold=0.05,
                  nms_threshold=0.5,
                  pre_nms_bbox_limit=1000,
@@ -90,9 +90,6 @@ class LFD(nn.Module):
 
             y_mesh, x_mesh = torch.meshgrid(y_coordinates, x_coordinates)
 
-            # 得到点的坐标矩阵，shape为（n,2）, n= height x width, 第一列为x的坐标，第二列为y的坐标
-            # CAUTION：FCOS将feature map的locations映射回原图上的points，加上了 stride // 2，从感受野中心的计算上看，这里是不用加的，加了反而产生了
-            # 偏差，但是为了忠于原文的逻辑，这里加上了
             point_coordinates = torch.stack((x_mesh.reshape(-1), y_mesh.reshape(-1)), dim=-1)
 
             return point_coordinates

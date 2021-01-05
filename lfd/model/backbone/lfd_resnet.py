@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-# author: Yonghao He
-# description: 
+
 import os
 import torch
 import torch.nn as nn
@@ -217,9 +216,7 @@ class FastestBlock(nn.Module):
 
 
 class LFDResNet(nn.Module):
-    """
 
-    """
     # default body architectures are set, or you can specify your own architectures
     # by default, all default bodies contain 5 stages
     mode_to_body_architectures = {

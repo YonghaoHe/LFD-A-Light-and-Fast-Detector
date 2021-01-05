@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-# author: Yonghao He
-# description: 
+
 import torch
 import torch.nn as nn
 

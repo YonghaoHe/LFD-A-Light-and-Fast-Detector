@@ -254,8 +254,7 @@ class ResNet(nn.Module):
                  base_channels=64,
                  strides=(1, 2, 2, 2),
                  dilations=(1, 1, 1, 1),
-                 # out_indices的每个元素依次为stage的索引和block的索引，stage的索引为1-based，block的索引为0-based。 这样便于更加灵活拿取backbone中的任意block的输出
-                 out_indices=((1, 1), (2, 1), (3, 1), (4, 1)),
+                 out_indices=((1, 1), (2, 1), (3, 1), (4, 1)),  # out_indices contain tuple of (stage_index, block_index), stage_index is 1-based, block_index is 0-based
                  style='pytorch',
                  deep_stem=False,
                  avg_down=False,

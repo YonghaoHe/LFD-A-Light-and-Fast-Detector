@@ -9,9 +9,7 @@ from ..dataset import turbojpeg, reserved_keys
 
 
 class DataLoader(object):
-    """
 
-    """
     def __init__(self,
                  dataset,
                  dataset_sampler,
@@ -39,11 +37,11 @@ class DataLoader(object):
         self._index_queue = queue.Queue()
         self._batch_queue = queue.Queue(maxsize=self._num_workers)
 
-        self.__start_workers()
+        self._start_workers()
 
-    def __start_workers(self):
+    def _start_workers(self):
         for i in range(self._num_workers):
-            worker = threading.Thread(target=self.__worker_func, args=(), daemon=True)
+            worker = threading.Thread(target=self._worker_func, args=(), daemon=True)
             worker.start()
 
     def _decode_image(self, sample):
@@ -83,8 +81,11 @@ class DataLoader(object):
         numpy_image_batch = numpy_image_batch.transpose([0, 3, 1, 2])
         return numpy_image_batch
 
-    def __worker_func(self):
-
+    def _worker_func(self):
+        """
+        the main func running in a thread
+        :return:
+        """
         while True:
             # obtain indexes of a batch
             index_batch = self._index_queue.get()
@@ -117,7 +118,7 @@ class DataLoader(object):
                 sample_temp = self._region_sampler(sample_temp)
 
                 # data augmentation --------------------------------------------------------------
-                if sample_temp['image'].ndim == 2:  # adjust the image according to the input channels
+                if sample_temp['image'].ndim == 2:  # adjust the image according to the input channels, 3 channels by default
                     image = numpy.tile(sample_temp['image'], (3, 1, 1))
                     sample_temp['image'] = image.transpose([1, 2, 0])
                 if self._augmentation_pipeline is not None:
@@ -144,18 +145,18 @@ class DataLoader(object):
             self._batch_queue.put((image_batch, annotation_batch, meta_batch))
 
     def __iter__(self):
-        # 首先将所有的 batch indexes 都放入queue中
+        # put all batch indexes into the queue
         for index_batch in self._dataset_sampler:
             self._index_queue.put(index_batch)
 
-        # 开始返回batch
+        # obtain batch produced by workers
         loop_counter = 0
         while loop_counter < self._loops:
             yield self._batch_queue.get()
             loop_counter += 1
 
     def __len__(self):
-        # 返回dataloader的长度，即获取batch的数量，也就是一次epoch需要循环的次数，
+        # the number of iterations in one epoch
         return self._loops
 
     @property

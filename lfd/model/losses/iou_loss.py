@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
 
-"""
-作者: 何泳澔
-日期: 2020-05-15
-模块文件: iou_loss.py
-模块描述: 
-"""
 import math
 import torch
 import torch.nn as nn

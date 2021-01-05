@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-# author: Yonghao He
-# description:
+
 import sys
 
-sys.path.append('../..')
+sys.path.append('..')
 import shutil
 import os
 import time
@@ -23,10 +22,10 @@ from lfd.execution.utils import customize_exception_hook
 
 assert torch.cuda.is_available(), 'GPU training supported only!'
 
-memo = 'WIDERFACE XS 模型' \
-       'head不共享, 进行path merge, 使用BN' \
-       '采用FL作为分类loss, loss weight设置为1.' \
-       '采用IoULoss作为回归loss，distance_to_bbox_mode采用exp, loss weight设置为1'
+memo = 'WIDERFACE XS' \
+       'Head: no share, path merge, with BN' \
+       'CE as classification loss, loss weight is set to 1.0' \
+       'IoULoss as regression loss, distance_to_bbox_mode is set to sigmoid, loss weight is set to 1.0'
 
 # all config parameters will be stored in config_dict
 config_dict = dict()
@@ -52,7 +51,7 @@ def prepare_common_settings():
     config_dict['training_epochs'] = 1000
 
     # reproductive
-    config_dict['seed'] = None
+    config_dict['seed'] = 666
     config_dict['cudnn_benchmark'] = True
     if config_dict['seed'] is not None:
         set_random_seed(config_dict['seed'])
@@ -63,10 +62,10 @@ def prepare_common_settings():
     assert isinstance(config_dict['gpu_list'], list)
 
     # display interval in iterations
-    config_dict['display_interval'] = 50
+    config_dict['display_interval'] = 100
 
     # checkpoint save interval in epochs
-    config_dict['save_interval'] = 100
+    config_dict['save_interval'] = 200
 
     # validation interval in epochs
     config_dict['val_interval'] = 0
@@ -81,26 +80,11 @@ def prepare_model():
     # input image channels: BGR--3, gray--1
     config_dict['num_input_channels'] = 3
 
-    # loss functions
-    # classification_loss = FocalLoss(use_sigmoid=True,
-    #                                 gamma=2.0,
-    #                                 alpha=0.25,
-    #                                 reduction='mean',
-    #                                 loss_weight=1.0)
     classification_loss = CrossEntropyLoss(
         reduction='mean',
         loss_weight=1.0
     )
-    # classification_loss = BCEWithLogitsLoss(
-    #     reduction='mean',
-    #     loss_weight=1.0
-    # )
 
-    # regression_loss = SmoothL1Loss(
-    #     beta=1.0,
-    #     reduction='mean',
-    #     loss_weight=1.0
-    # )
     regression_loss = IoULoss(
         eps=1e-6,
         reduction='mean',
@@ -158,11 +142,7 @@ def prepare_model():
         point_strides=lfd_neck.num_output_strides_list,
         classification_loss_func=classification_loss,
         regression_loss_func=regression_loss,
-        distance_to_bbox_mode='sigmoid',
-        classification_threshold=0.05,
-        nms_threshold=0.5,
-        pre_nms_bbox_limit=1000,
-        post_nms_bbox_limit=100,
+        distance_to_bbox_mode='sigmoid'
     )
 
     # init param weights file
@@ -185,16 +165,16 @@ prepare data loader ------------------------------------------------------------
 
 def prepare_data_pipeline():
     # batch size
-    config_dict['batch_size'] = 12
+    config_dict['batch_size'] = 64
 
     # number of train data_loader workers
-    config_dict['num_train_workers'] = 6
+    config_dict['num_train_workers'] = 12
 
     # number of val data_loader workers
     config_dict['num_val_workers'] = 0
 
     # construct train data_loader
-    config_dict['train_dataset_path'] = '../code_test/WIDERFACE_pack/widerface_train.pkl'
+    config_dict['train_dataset_path'] = './WIDERFACE_pack/widerface_train.pkl'
     train_dataset = Dataset(load_path=config_dict['train_dataset_path'])
 
     train_dataset_sampler = RandomWithNegDatasetSampler(
@@ -204,8 +184,6 @@ def prepare_data_pipeline():
         shuffle=True,
         ignore_last=False
     )
-
-    # train_region_sampler = RandomBBoxCropRegionSampler(crop_size=480, resize_range=(0.5, 2))
 
     train_region_sampler = RandomBBoxCropWithRangeSelectionRegionSampler(crop_size=480,
                                                                          detection_ranges=config_dict['detection_scales'],
@@ -248,10 +226,10 @@ def prepare_optimizer():
                                                momentum=config_dict['momentum'],
                                                weight_decay=config_dict['weight_decay'])
 
-    config_dict['optimizer_grad_clip_cfg'] = dict(max_norm=10, norm_type=2, duration=1)
+    config_dict['optimizer_grad_clip_cfg'] = dict(max_norm=10, norm_type=2, duration=20)
 
     # multi step lr scheduler is used here
-    config_dict['milestones'] = [500, 750, 900]
+    config_dict['milestones'] = [500, 700, 900]
     config_dict['gamma'] = 0.1
     assert max(config_dict['milestones']) < config_dict['training_epochs'], 'the max value in milestones should be less than total epochs!'
 

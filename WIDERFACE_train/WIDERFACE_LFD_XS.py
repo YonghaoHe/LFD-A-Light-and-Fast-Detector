@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import sys
-
 sys.path.append('..')
 import shutil
 import os
@@ -62,10 +61,10 @@ def prepare_common_settings():
     assert isinstance(config_dict['gpu_list'], list)
 
     # display interval in iterations
-    config_dict['display_interval'] = 100
+    config_dict['display_interval'] = 5
 
     # checkpoint save interval in epochs
-    config_dict['save_interval'] = 200
+    config_dict['save_interval'] = 100
 
     # validation interval in epochs
     config_dict['val_interval'] = 0
@@ -151,7 +150,7 @@ def prepare_model():
 
     # resume training path
     # when set, the 'weight_path' will be ignored. The executor will init the whole net and training parameters using this file
-    config_dict['resume_path'] = None
+    config_dict['resume_path'] = './WIDERFACE_LFD_XS_work_dir_20210102_015737/epoch_100.pth'
 
     # evaluator
     # the evaluator should match the dataset
@@ -165,10 +164,10 @@ prepare data loader ------------------------------------------------------------
 
 def prepare_data_pipeline():
     # batch size
-    config_dict['batch_size'] = 64
+    config_dict['batch_size'] = 12
 
     # number of train data_loader workers
-    config_dict['num_train_workers'] = 12
+    config_dict['num_train_workers'] = 6
 
     # number of val data_loader workers
     config_dict['num_val_workers'] = 0

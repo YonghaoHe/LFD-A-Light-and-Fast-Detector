@@ -31,12 +31,16 @@ class Executor(object):
 
         # resume training or load checkpoint only
         if self.config_dict['resume_path'] is not None:
-            self.resume()
+            self.resume_weight()
         elif self.config_dict['weight_path'] is not None:
             self.load()
 
         # use DataParallel to wrap the model
         self.config_dict['model'] = DataParallel(self.config_dict['model'], device_ids=self.config_dict['gpu_list']).cuda(torch.device('cuda', self.config_dict['gpu_list'][0]))
+
+        # optimizer dict must be updated after DataParallel wrap
+        if self.config_dict['resume_path'] is not None:
+            self.resume_optimizer()
 
         # register hooks
         self._hooks = list()
@@ -134,22 +138,37 @@ class Executor(object):
         self.config_dict['logger'].info('Load weights from checkpoint:{}'.format(self.config_dict['weight_path']))
         load_checkpoint(self.config_dict['model'], load_path=self.config_dict['weight_path'], strict=True, logger=self.config_dict['logger'])
 
-    def resume(self):
+    def resume_weight(self):
         """
-        resume training state including model weights
-        ① load weights
-        ② resume optimizer
-        ③ resume config
         :return:
         """
         self.config_dict['logger'].info('Resume training from checkpoint:{}'.format(self.config_dict['resume_path']))
 
         checkpoint = load_checkpoint(self.config_dict['model'], load_path=self.config_dict['resume_path'], strict=True, logger=self.config_dict['logger'])
+        self.config_dict['checkpoint'] = checkpoint
 
-        if 'optimizer_state_dict' in checkpoint:
-            self.config_dict['optimizer'].load_state_dict(checkpoint['optimizer_state_dict'])
+        # filter some configs
+        checkpoint['meta'].pop('timestamp') if 'timestamp' in checkpoint['meta'] else None
+        checkpoint['meta'].pop('work_dir') if 'work_dir' in checkpoint['meta'] else None
+        checkpoint['meta'].pop('log_path') if 'log_path' in checkpoint['meta'] else None
+        checkpoint['meta'].pop('training_epochs') if 'training_epochs' in checkpoint['meta'] else None
+        checkpoint['meta'].pop('gpu_list') if 'gpu_list' in checkpoint['meta'] else None
+        checkpoint['meta'].pop('display_interval') if 'display_interval' in checkpoint['meta'] else None
+        checkpoint['meta'].pop('save_interval') if 'save_interval' in checkpoint['meta'] else None
+        checkpoint['meta'].pop('val_interval') if 'val_interval' in checkpoint['meta'] else None
+        checkpoint['meta'].pop('weight_path') if 'weight_path' in checkpoint['meta'] else None
+        checkpoint['meta'].pop('resume_path') if 'resume_path' in checkpoint['meta'] else None
+        checkpoint['meta'].pop('batch_size') if 'batch_size' in checkpoint['meta'] else None
+        checkpoint['meta'].pop('num_train_workers') if 'num_train_workers' in checkpoint['meta'] else None
+        checkpoint['meta'].pop('num_val_workers') if 'num_val_workers' in checkpoint['meta'] else None
+        checkpoint['meta'].pop('train_dataset_path') if 'train_dataset_path' in checkpoint['meta'] else None
+        checkpoint['meta'].pop('optimizer_grad_clip_cfg') if 'optimizer_grad_clip_cfg' in checkpoint['meta'] else None
 
         self.config_dict.update(checkpoint['meta'])
+
+    def resume_optimizer(self):
+        if 'optimizer_state_dict' in self.config_dict['checkpoint']:
+            self.config_dict['optimizer'].load_state_dict(self.config_dict['checkpoint']['optimizer_state_dict'])
 
     def get_current_lr(self):
         """

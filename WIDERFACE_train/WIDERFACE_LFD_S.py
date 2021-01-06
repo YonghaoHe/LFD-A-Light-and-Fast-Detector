@@ -64,7 +64,7 @@ def prepare_common_settings():
     config_dict['display_interval'] = 100
 
     # checkpoint save interval in epochs
-    config_dict['save_interval'] = 200
+    config_dict['save_interval'] = 100
 
     # validation interval in epochs
     config_dict['val_interval'] = 0
@@ -87,7 +87,7 @@ def prepare_model():
     regression_loss = IoULoss(
         eps=1e-6,
         reduction='mean',
-        loss_weight=0.1
+        loss_weight=1.0
     )
 
     # number of classes

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import sys
-
 sys.path.append('..')
 import shutil
 import os
@@ -88,7 +87,7 @@ def prepare_model():
     regression_loss = IoULoss(
         eps=1e-6,
         reduction='mean',
-        loss_weight=0.1
+        loss_weight=1.0
     )
 
     # number of classes

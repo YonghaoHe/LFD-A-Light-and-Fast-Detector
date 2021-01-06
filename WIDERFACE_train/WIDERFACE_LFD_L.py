@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import sys
-
 sys.path.append('../..')
 import shutil
 import os
@@ -65,7 +64,7 @@ def prepare_common_settings():
     config_dict['display_interval'] = 100
 
     # checkpoint save interval in epochs
-    config_dict['save_interval'] = 200
+    config_dict['save_interval'] = 100
 
     # validation interval in epochs
     config_dict['val_interval'] = 0
@@ -88,7 +87,7 @@ def prepare_model():
     regression_loss = IoULoss(
         eps=1e-6,
         reduction='mean',
-        loss_weight=0.1
+        loss_weight=1.0
     )
 
     # number of classes
@@ -187,7 +186,7 @@ def prepare_data_pipeline():
     train_region_sampler = RandomBBoxCropWithRangeSelectionRegionSampler(crop_size=480,
                                                                          detection_ranges=config_dict['detection_scales'],
                                                                          range_selection_probs=[1, 1, 1, 1, 1],
-                                                                         lock_threshold=40)
+                                                                         lock_threshold=30)
 
     config_dict['train_data_loader'] = DataLoader(dataset=train_dataset,
                                                   dataset_sampler=train_dataset_sampler,

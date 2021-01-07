@@ -55,7 +55,7 @@ class LrSchedulerHook(Hook):
 
     def _resume_init_lr(self, executor):
         if not self._resume_init_flag:
-            self._set_lr(executor, self._base_lr)  # resume init lr
+            self._set_lr(executor, self._base_lr)  # resume init lr only once
             self._resume_init_flag = True
 
     def before_run(self, executor):
@@ -64,6 +64,10 @@ class LrSchedulerHook(Hook):
         for group in executor.config_dict['optimizer'].param_groups:
             group.setdefault('initial_lr', group['lr'])
         self._base_lr = [group['initial_lr'] for group in executor.config_dict['optimizer'].param_groups]
+
+        # in case of resume, adjust lr according to
+        for i in range(executor.config_dict['epoch']):
+            executor.config_dict['lr_scheduler'].step()
 
     def before_train_epoch(self, executor):
         if self._by_epoch:

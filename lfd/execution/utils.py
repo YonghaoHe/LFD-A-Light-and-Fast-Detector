@@ -87,7 +87,7 @@ def weights_to_cpu(state_dict):
     return state_dict_cpu
 
 
-def save_checkpoint(model, save_path, optimizer=None, meta=None):
+def save_checkpoint(model, save_path, optimizer=None, lr_scheduler=None, meta=None):
     """Save checkpoint to file.
 
     The checkpoint will have 3 fields: ``meta``, ``state_dict`` and
@@ -97,6 +97,7 @@ def save_checkpoint(model, save_path, optimizer=None, meta=None):
         model (Module): Module whose params are to be saved.
         save_path (str): Checkpoint save path.
         optimizer (:obj:`Optimizer`, optional): Optimizer to be saved.
+        lr_scheduler (obj: 'LRScheduler', optional): Lr scheduler to be saved
         meta (dict, optional): Metadata to be saved in checkpoint.
     """
     if meta is None:
@@ -115,6 +116,8 @@ def save_checkpoint(model, save_path, optimizer=None, meta=None):
     }
     if optimizer is not None:
         checkpoint['optimizer_state_dict'] = optimizer.state_dict()
+    if lr_scheduler is not None:
+        checkpoint['lr_scheduler_state_dict'] = lr_scheduler.state_dict()
 
     torch.save(checkpoint, save_path)
 

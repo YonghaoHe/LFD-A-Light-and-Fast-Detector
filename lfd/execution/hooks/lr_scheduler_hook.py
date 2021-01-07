@@ -65,10 +65,6 @@ class LrSchedulerHook(Hook):
             group.setdefault('initial_lr', group['lr'])
         self._base_lr = [group['initial_lr'] for group in executor.config_dict['optimizer'].param_groups]
 
-        # in case of resume, adjust lr according to
-        for i in range(executor.config_dict['epoch']):
-            executor.config_dict['lr_scheduler'].step()
-
     def before_train_epoch(self, executor):
         if self._by_epoch:
             current_loop = executor.config_dict['epoch'] + 1

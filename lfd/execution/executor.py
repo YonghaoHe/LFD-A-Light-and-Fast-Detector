@@ -41,6 +41,7 @@ class Executor(object):
         # optimizer dict must be updated after DataParallel wrap
         if self.config_dict['resume_path'] is not None:
             self.resume_optimizer()
+            self.resume_lr_scheduler()
 
         # register hooks
         self._hooks = list()
@@ -169,6 +170,10 @@ class Executor(object):
     def resume_optimizer(self):
         if 'optimizer_state_dict' in self.config_dict['checkpoint']:
             self.config_dict['optimizer'].load_state_dict(self.config_dict['checkpoint']['optimizer_state_dict'])
+
+    def resume_lr_scheduler(self):
+        if 'lr_scheduler_state_dict' in self.config_dict['checkpoint']:
+            self.config_dict['lr_scheduler'].load_state_dict(self.config_dict['checkpoint']['lr_scheduler_state_dict'])
 
     def get_current_lr(self):
         """

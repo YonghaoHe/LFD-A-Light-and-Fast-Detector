@@ -259,7 +259,6 @@ class ResNet(nn.Module):
                  deep_stem=False,
                  avg_down=False,
                  frozen_stages=-1,
-                 conv_cfg=None,
                  norm_cfg=dict(type='BN', requires_grad=True),
                  norm_eval=True,  # determine whether to fix norm weights or not during training
                  dcn=None,
@@ -296,7 +295,6 @@ class ResNet(nn.Module):
         self.deep_stem = deep_stem
         self.avg_down = avg_down
         self.frozen_stages = frozen_stages
-        self.conv_cfg = conv_cfg
         self.norm_cfg = norm_cfg
         self.with_cp = with_cp
         self.norm_eval = norm_eval

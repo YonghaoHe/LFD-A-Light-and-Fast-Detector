@@ -3,10 +3,10 @@
 import os
 from ..dataset.widerface_parser import WIDERFACEParser
 from ..dataset.dataset import Dataset
-__all__ = ['pack_widerface']
+__all__ = ['pack']
 
 
-def pack_widerface(image_root_path, annotation_path, pack_save_path, neg_image_root_path=None):
+def pack(image_root_path, annotation_path, pack_save_path, neg_image_root_path=None):
     assert os.path.exists(image_root_path), 'image root path does not exist!'
     assert os.path.exists(annotation_path), 'annotation path does not exist!'
     if neg_image_root_path is not None:

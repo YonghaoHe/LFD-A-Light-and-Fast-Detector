@@ -5,10 +5,10 @@ import pickle
 import cv2
 from ..dataset.coco_parser import COCOParser
 from ..dataset.dataset import Dataset
-__all__ = ['pack_coco', 'pack_coco_mini_for_debug', 'check_by_show']
+__all__ = ['pack', 'pack_mini_for_debug', 'check_by_show']
 
 
-def pack_coco(image_root_path, annotation_path, pack_save_path, filter_no_gt, filter_min_size=32):
+def pack(image_root_path, annotation_path, pack_save_path, filter_no_gt, filter_min_size=32):
     assert os.path.exists(image_root_path), 'image root path does not exist!'
     assert os.path.exists(annotation_path), 'annotation path does not exist!'
     assert pack_save_path.lower().endswith('.pkl'), 'the required suffix is .pkl!'
@@ -23,7 +23,7 @@ def pack_coco(image_root_path, annotation_path, pack_save_path, filter_no_gt, fi
     print(dataset)
 
 
-def pack_coco_mini_for_debug(pkl_path, mini_pkl_save_path):
+def pack_mini_for_debug(pkl_path, mini_pkl_save_path):
     """
     get a mini dataset for debug based on existed pkl files
     :return:
@@ -55,10 +55,10 @@ def check_by_show(pkl_path):
     dataset = Dataset(load_path=pkl_path)
     print(dataset)
 
-    index_annotation_dict = dataset.index_annotation_dict
+    indexes = dataset.get_indexes()
     category_ids_to_label_indexes, label_indexes_to_category_ids, category_ids_to_category_names = dataset.meta_info
 
-    for index, annotation in index_annotation_dict.items():
+    for index in indexes:
         sample = dataset[index]
         image = cv2.imread(sample['image_path'], cv2.IMREAD_COLOR)
         if 'bboxes' in sample:

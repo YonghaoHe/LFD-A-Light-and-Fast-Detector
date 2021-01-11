@@ -6,7 +6,19 @@
 /code_test/*
 /lfd/model/backbone/pretrained_backbone_weights/*
 !/lfd/model/backbone/pretrained_backbone_weights/*.md
+/lfd/deployment/tensorrt/temp/*
 /build/
 
-/WIDERFACE_train/*
-/lfd/deployment/tensorrt/temp/*
+/WIDERFACE_train/
+!/WIDERFACE_train/__init__.py
+!/WIDERFACE_train/evaluation.py
+!/WIDERFACE_train/timing_inference_latency.py
+!/WIDERFACE_train/WIDERFACE_LFD_L.py
+!/WIDERFACE_train/WIDERFACE_LFD_M.py
+!/WIDERFACE_train/WIDERFACE_LFD_S.py
+!/WIDERFACE_train/WIDERFACE_LFD_XS.py
+
+/COCO_train/
+!/COCO_train/__init__.py
+!/COCO_train/COCO_FCOS_R50.py
+!/COCO_train/pack_coco.py

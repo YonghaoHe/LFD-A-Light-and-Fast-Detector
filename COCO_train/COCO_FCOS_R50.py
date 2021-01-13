@@ -134,7 +134,7 @@ def prepare_model():
         norm_cfg=None
     )
     config_dict['detection_ranges'] = ((0, 64), (64, 128), (128, 256), (256, 512), (512, 10000))
-    config_dict['bias_lr_cfg'] = dict(bias_lr=0.02, bias_weight_decay=0.)
+    config_dict['bias_lr_cfg'] = dict(bias_lr=2., bias_weight_decay=0.)
     config_dict['model'] = FCOS(
         backbone=fcos_backbone,
         neck=fcos_neck,
@@ -241,9 +241,9 @@ def prepare_optimizer():
 
     # add warmup parameters
     config_dict['warmup_setting'] = dict(by_epoch=False,
-                                         warmup_mode='linear',  # if no warmup needed, set warmup_mode = None
-                                         warmup_loops=1500,
-                                         warmup_ratio=0.1)
+                                         warmup_mode='constant',  # if no warmup needed, set warmup_mode = None
+                                         warmup_loops=500,
+                                         warmup_ratio=1.0 / 3)
 
     assert isinstance(config_dict['warmup_setting'], dict) and 'by_epoch' in config_dict['warmup_setting'] and 'warmup_mode' in config_dict['warmup_setting'] \
            and 'warmup_loops' in config_dict['warmup_setting'] and 'warmup_ratio' in config_dict['warmup_setting']

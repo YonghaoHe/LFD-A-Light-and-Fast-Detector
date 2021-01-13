@@ -400,6 +400,13 @@ class ResNet(nn.Module):
         setattr(self, 'layer%d' % stage_index, module_list)
 
     def _freeze_stages(self):
+        # freeze all learnable params in norm if requires_grad is False
+        if not self.norm_cfg.get('requires_grad', True):
+            for m in self.modules():
+                if isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                    for param in m.parameters():
+                        param.requires_grad = False
+
         if self.frozen_stages >= 0:
             if self.deep_stem:
                 self.stem.eval()

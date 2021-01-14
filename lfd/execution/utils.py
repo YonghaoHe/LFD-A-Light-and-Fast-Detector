@@ -90,8 +90,8 @@ def weights_to_cpu(state_dict):
 def save_checkpoint(model, save_path, optimizer=None, lr_scheduler=None, meta=None):
     """Save checkpoint to file.
 
-    The checkpoint will have 3 fields: ``meta``, ``state_dict`` and
-    ``optimizer``. By default ``meta`` will contain version and time info.
+    The checkpoint will have 4 fields: ``meta``, ``state_dict`` and
+    ``optimizer``, ``lr_scheduler``. By default ``meta`` will contain version and time info.
 
     Args:
         model (Module): Module whose params are to be saved.

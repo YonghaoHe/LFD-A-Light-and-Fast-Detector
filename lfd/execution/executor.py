@@ -129,7 +129,7 @@ class Executor(object):
         :return:
         """
         save_path = os.path.join(self.config_dict['work_dir'], 'epoch_'+str(self.config_dict['epoch'])+'.pth')
-        save_checkpoint(self.config_dict['model'], save_path=save_path, optimizer=self.config_dict['optimizer'], meta=self._generate_meta())
+        save_checkpoint(self.config_dict['model'], save_path=save_path, optimizer=self.config_dict['optimizer'], lr_scheduler=self.config_dict['lr_scheduler'], meta=self._generate_meta())
 
     def load(self):
         """

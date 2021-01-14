@@ -22,7 +22,7 @@ from lfd.execution.utils import customize_exception_hook
 assert torch.cuda.is_available(), 'GPU training supported only!'
 
 memo = 'WIDERFACE S' \
-       'head: no share, path merge, with BN' \
+       'head: share, path merge, with GN' \
        'CE as classification loss, loss weight is set to 1.0' \
        'IoULoss as regression loss, distance_to_bbox_mode is set to sigmoid, loss weight is set to 1.0'
 
@@ -61,7 +61,7 @@ def prepare_common_settings():
     assert isinstance(config_dict['gpu_list'], list)
 
     # display interval in iterations
-    config_dict['display_interval'] = 100
+    config_dict['display_interval'] = 5
 
     # checkpoint save interval in epochs
     config_dict['save_interval'] = 100
@@ -124,8 +124,8 @@ def prepare_model():
         num_head_channels=128,
         num_conv_layers=2,
         activation_cfg=dict(type='ReLU', inplace=True),
-        norm_cfg=dict(type='BatchNorm2d'),
-        share_head_flag=False,
+        norm_cfg=dict(type='GroupNorm', num_groups=16),
+        share_head_flag=True,
         merge_path_flag=True,
         classification_loss_type=type(classification_loss).__name__,
         regression_loss_type=type(regression_loss).__name__
@@ -164,10 +164,10 @@ prepare data loader ------------------------------------------------------------
 
 def prepare_data_pipeline():
     # batch size
-    config_dict['batch_size'] = 64
+    config_dict['batch_size'] = 12
 
     # number of train data_loader workers
-    config_dict['num_train_workers'] = 12
+    config_dict['num_train_workers'] = 6
 
     # number of val data_loader workers
     config_dict['num_val_workers'] = 0

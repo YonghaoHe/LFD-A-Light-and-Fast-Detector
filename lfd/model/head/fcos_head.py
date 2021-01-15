@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 import numpy
+
 __all__ = ['FCOSHead']
 
 
@@ -14,6 +15,27 @@ class Scale(nn.Module):
 
     def forward(self, x):
         return x * self._scale
+
+
+class FixedBatchNorm2d(nn.Module):
+    """
+    BatchNorm2d where the batch statistics are initialized and are fixed
+    The affine parameters are updated during the training phase
+    """
+
+    def __init__(self, n):
+        super(FixedBatchNorm2d, self).__init__()
+        self.weight = nn.Parameter(torch.ones(n))
+        self.bias = nn.Parameter(torch.zeros(n))
+        self.register_buffer("running_mean", torch.zeros(n))
+        self.register_buffer("running_var", torch.ones(n))
+
+    def forward(self, x):
+        scale = self.weight * self.running_var.rsqrt()
+        bias = self.bias - self.running_mean * scale
+        scale = scale.reshape(1, -1, 1, 1)
+        bias = bias.reshape(1, -1, 1, 1)
+        return x * scale + bias
 
 
 class FCOSHead(nn.Module):
@@ -28,7 +50,8 @@ class FCOSHead(nn.Module):
         super(FCOSHead, self).__init__()
         if norm_cfg is not None:
             assert isinstance(norm_cfg, dict) and 'type' in norm_cfg
-            if norm_cfg['type'] == 'GN':
+            assert norm_cfg['type'] in ['BatchNorm2d', 'GroupNorm', 'FixedBatchNorm2d']
+            if norm_cfg['type'] == 'GroupNorm':
                 assert 'num_groups' in norm_cfg
 
         self._num_classes = num_classes
@@ -44,27 +67,33 @@ class FCOSHead(nn.Module):
 
             num_in_channels = self._num_input_channels if i == 0 else self._num_head_channels
             if self._norm_cfg is not None:
-                self._classification_path.append(
-                    nn.Conv2d(num_in_channels, self._num_head_channels, kernel_size=3, stride=1, padding=1, bias=False)
-                )
-                self._classification_path.append(
-                    nn.BatchNorm2d(num_features=self._num_head_channels) if self._norm_cfg['type'] == 'BN'
-                    else nn.GroupNorm(num_groups=self._norm_cfg['num_groups'], num_channels=self._num_head_channels)
-                )
-                self._regression_path.append(
-                    nn.Conv2d(num_in_channels, self._num_head_channels, kernel_size=3, stride=1, padding=1, bias=False)
-                )
-                self._regression_path.append(
-                    nn.BatchNorm2d(num_features=self._num_head_channels) if self._norm_cfg['type'] == 'BN'
-                    else nn.GroupNorm(num_groups=self._norm_cfg['num_groups'], num_channels=self._num_head_channels)
-                )
+                self._classification_path.append(nn.Conv2d(num_in_channels, self._num_head_channels, kernel_size=3, stride=1, padding=1, bias=False))
+
+                if self._norm_cfg['type'] == 'BatchNorm2d':
+                    norm = nn.BatchNorm2d(num_features=self._num_head_channels)
+                elif self._norm_cfg['type'] == 'GroupNorm':
+                    norm = nn.GroupNorm(num_groups=self._norm_cfg['num_groups'], num_channels=self._num_head_channels)
+                elif self._norm_cfg['type'] == 'FixedBatchNorm2d':
+                    norm = FixedBatchNorm2d(self._num_head_channels)
+                else:
+                    raise ValueError
+                self._classification_path.append(norm)
+
+                self._regression_path.append(nn.Conv2d(num_in_channels, self._num_head_channels, kernel_size=3, stride=1, padding=1, bias=False))
+
+                if self._norm_cfg['type'] == 'BatchNorm2d':
+                    norm = nn.BatchNorm2d(num_features=self._num_head_channels)
+                elif self._norm_cfg['type'] == 'GroupNorm':
+                    norm = nn.GroupNorm(num_groups=self._norm_cfg['num_groups'], num_channels=self._num_head_channels)
+                elif self._norm_cfg['type'] == 'FixedBatchNorm2d':
+                    norm = FixedBatchNorm2d(self._num_head_channels)
+                else:
+                    raise ValueError
+                self._regression_path.append(norm)
             else:
-                self._classification_path.append(
-                    nn.Conv2d(num_in_channels, self._num_head_channels, kernel_size=3, stride=1, padding=1, bias=True)
-                )
-                self._regression_path.append(
-                    nn.Conv2d(num_in_channels, self._num_head_channels, kernel_size=3, stride=1, padding=1, bias=True)
-                )
+                self._classification_path.append(nn.Conv2d(num_in_channels, self._num_head_channels, kernel_size=3, stride=1, padding=1, bias=True))
+
+                self._regression_path.append(nn.Conv2d(num_in_channels, self._num_head_channels, kernel_size=3, stride=1, padding=1, bias=True))
 
             self._classification_path.append(nn.ReLU(inplace=True))
             self._regression_path.append(nn.ReLU(inplace=True))
@@ -92,7 +121,7 @@ class FCOSHead(nn.Module):
                     nn.init.normal_(m.weight, mean=0, std=0.01)
                 if hasattr(m, 'bias') and m.bias is not None:
                     nn.init.constant_(m.bias, 0)
-            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm, FixedBatchNorm2d)):
                 if hasattr(m, 'weight'):
                     nn.init.constant_(m.weight, 1)
                 if hasattr(m, 'bias') and m.bias is not None:
@@ -103,7 +132,7 @@ class FCOSHead(nn.Module):
                     nn.init.normal_(m.weight, mean=0, std=0.01)
                 if hasattr(m, 'bias') and m.bias is not None:
                     nn.init.constant_(m.bias, 0)
-            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm, FixedBatchNorm2d)):
                 if hasattr(m, 'weight'):
                     nn.init.constant_(m.weight, 1)
                 if hasattr(m, 'bias') and m.bias is not None:
@@ -148,7 +177,3 @@ class FCOSHead(nn.Module):
             regression_outputs.append(regression_output)
 
         return classification_outputs, regression_outputs, centerness_outputs
-
-
-
-

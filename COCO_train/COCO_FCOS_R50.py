@@ -131,7 +131,7 @@ def prepare_model():
         num_input_channels=256,
         num_head_channels=256,
         num_layers=4,
-        norm_cfg=None
+        norm_cfg=dict(type='FixedBatchNorm2d')
     )
     config_dict['detection_ranges'] = ((0, 64), (64, 128), (128, 256), (256, 512), (512, 10000))
     config_dict['bias_lr_cfg'] = dict(bias_lr=2., bias_weight_decay=0.)

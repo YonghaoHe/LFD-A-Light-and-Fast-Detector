@@ -35,7 +35,7 @@ class FixedBatchNorm2d(nn.Module):
         bias = self.bias - self.running_mean * scale
         scale = scale.reshape(1, -1, 1, 1)
         bias = bias.reshape(1, -1, 1, 1)
-        return x * scale + bias
+        return x * scale.float().exp() + bias.float().exp()
 
 
 class FCOSHead(nn.Module):

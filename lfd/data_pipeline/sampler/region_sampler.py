@@ -145,9 +145,11 @@ class RandomBBoxCropWithRangeSelectionRegionSampler(BaseRegionSampler):
 
     """
 
-    def __init__(self, crop_size, detection_ranges, range_selection_probs=None, lock_threshold=None):
+    def __init__(self, crop_size, detection_ranges, range_mode='longer', neg_resize_range=(0.5, 3), range_selection_probs=None, lock_threshold=None):
         assert isinstance(crop_size, int)
         assert isinstance(detection_ranges, (tuple, list))
+        assert range_mode in ['shorter', 'longer', 'sqrt']
+        assert isinstance(neg_resize_range, (tuple, list)) and len(neg_resize_range) == 2
         if range_selection_probs is not None:
             assert len(detection_ranges) == len(range_selection_probs)
         if lock_threshold is not None:
@@ -155,9 +157,11 @@ class RandomBBoxCropWithRangeSelectionRegionSampler(BaseRegionSampler):
 
         self._crop_size = crop_size
         self._detection_ranges = detection_ranges
+        self._range_mode = range_mode
         self._range_lower_bound = self._detection_ranges[0][0]
         self._range_upper_bound = self._detection_ranges[-1][1]
         self._range_selection_probs = range_selection_probs
+        self._neg_resize_range = neg_resize_range
         if self._range_selection_probs is None:
             self._range_selection_probs = [1. / len(self._detection_ranges) for _ in range(len(self._detection_ranges))]
         else:
@@ -175,24 +179,32 @@ class RandomBBoxCropWithRangeSelectionRegionSampler(BaseRegionSampler):
         # determine target scale
         target_bbox_index = -1
         if len(bboxes) > 0:
-            target_bbox_index = random.randint(0, len(bboxes)-1)
+            target_bbox_index = random.randint(0, len(bboxes) - 1)
             selected_bbox = bboxes[target_bbox_index]
-            longer_side = max(selected_bbox[-2:])
-            if longer_side <= self._range_lower_bound:
-                resize_scale = 1.0
-            elif self._lock_threshold and longer_side <= self._lock_threshold:
-                target_length = random.randint(self._range_lower_bound, longer_side)
-                resize_scale = target_length / longer_side
+            if self._range_mode == 'shorter':
+                determine_side = min(selected_bbox[-2:])
+            elif self._range_mode == 'longer':
+                determine_side = max(selected_bbox[-2:])
+            elif self._range_mode == 'sqrt':
+                determine_side = (selected_bbox[-2] * selected_bbox[-1]) ** 0.5
             else:
-                if longer_side >= self._range_upper_bound and random.random() > 0.9:
+                raise ValueError
+
+            if determine_side <= self._range_lower_bound:
+                resize_scale = 1.0
+            elif self._lock_threshold and determine_side <= self._lock_threshold:
+                target_length = random.randint(self._range_lower_bound, determine_side)
+                resize_scale = target_length / determine_side
+            else:
+                if determine_side >= self._range_upper_bound and random.random() > 0.9:
                     target_length = self._range_upper_bound + random.randint(0, self._range_upper_bound * 0.5)
-                    resize_scale = target_length / longer_side
+                    resize_scale = target_length / determine_side
                 else:
                     target_range = random.choices(self._detection_ranges, self._range_selection_probs)[0]
                     target_length = random.randint(target_range[0], target_range[1])
-                    resize_scale = target_length / longer_side
+                    resize_scale = target_length / determine_side
         else:
-            resize_scale = random.random() * 2.5 + 0.5  # [0.5, 3]
+            resize_scale = random.random() * (self._neg_resize_range[1] - self._neg_resize_range[0]) + self._neg_resize_range[0]
 
         image = cv2.resize(image, (0, 0), fx=resize_scale, fy=resize_scale)
         # rescale bboxes

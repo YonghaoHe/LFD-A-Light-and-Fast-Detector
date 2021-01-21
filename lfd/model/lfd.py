@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-# author: Yonghao He
-# description: 
 
 import torch
 import torch.nn as nn
@@ -24,6 +22,7 @@ class LFD(nn.Module):
                  num_classes=80,
                  regression_ranges=((0, 64), (64, 128), (128, 256), (256, 512), (512, 1024)),
                  gray_range_factors=(0.9, 1.1),
+                 range_assign_mode='longer',  # determine how to assign bbox to which range
                  point_strides=(8, 16, 32, 64, 128),
                  classification_loss_func=None,
                  regression_loss_func=None,
@@ -35,12 +34,18 @@ class LFD(nn.Module):
                  ):
         super(LFD, self).__init__()
         assert len(regression_ranges) == len(point_strides)
+        assert range_assign_mode in ['longer', 'shorter', 'sqrt']
+        assert distance_to_bbox_mode in ['exp', 'sigmoid']
 
         self._backbone = backbone
         self._neck = neck
         self._head = head
         self._num_classes = num_classes
         self._regression_ranges = regression_ranges
+        self._range_assign_mode = range_assign_mode
+        if self._range_assign_mode in ['shorter', 'sqrt']:
+            assert distance_to_bbox_mode == 'exp', 'when range assign mode is "shorter" or "sqrt", distance_to_bbox_mode must be "exp"!'
+
         self._gray_range_factors = (min(gray_range_factors), max(gray_range_factors))
         self._gray_ranges = [(int(low * self._gray_range_factors[0]), int(up * self._gray_range_factors[1])) for (low, up) in self._regression_ranges]
         self._num_heads = len(point_strides)
@@ -168,7 +173,7 @@ class LFD(nn.Module):
 
         gt_bboxes = gt_bboxes[None].expand(num_points, num_gt_bboxes, 4)
         gt_labels = gt_labels[None].expand(num_points, num_gt_bboxes)
-        gt_bboxes_larger_side = torch.max(gt_bboxes[..., 2], gt_bboxes[..., 3])
+
         concat_regression_ranges = concat_regression_ranges[:, None, :].expand(num_points, num_gt_bboxes, 2)
         concat_gray_ranges = concat_gray_ranges[:, None, :].expand(num_points, num_gt_bboxes, 2)
 
@@ -201,13 +206,23 @@ class LFD(nn.Module):
         if self._regression_loss_type == 'independent':
             regression_delta = regression_delta / concat_regression_ranges[..., 1, None]  # P x N x 4
 
-        # determine learnable points P x N
-        head_selection_condition = (concat_regression_ranges[..., 0] <= gt_bboxes_larger_side) & (gt_bboxes_larger_side <= concat_regression_ranges[..., 1])
+        # determine pos/gray/neg points P x N
+        # compute determine side according to range_assign_mode
+        if self._range_assign_mode == 'longer':
+            gt_bboxes_determine_side = torch.max(gt_bboxes[..., 2], gt_bboxes[..., 3])
+        elif self._range_assign_mode == 'shorter':
+            gt_bboxes_determine_side = torch.min(gt_bboxes[..., 2], gt_bboxes[..., 3])
+        elif self._range_assign_mode == 'sqrt':
+            gt_bboxes_determine_side = torch.sqrt(gt_bboxes[..., 2] * gt_bboxes[..., 3])
+        else:
+            raise ValueError('Unsupported range assign mode!')
+
+        head_selection_condition = (concat_regression_ranges[..., 0] <= gt_bboxes_determine_side) & (gt_bboxes_determine_side <= concat_regression_ranges[..., 1])
         hit_condition = regression_delta.min(dim=-1)[0] >= 0
         green_condition = head_selection_condition & hit_condition
 
-        gray_condition1 = (concat_gray_ranges[..., 0] <= gt_bboxes_larger_side) & (gt_bboxes_larger_side < concat_regression_ranges[..., 0])
-        gray_condition2 = (concat_regression_ranges[..., 1] < gt_bboxes_larger_side) & (gt_bboxes_larger_side <= concat_gray_ranges[..., 1])
+        gray_condition1 = (concat_gray_ranges[..., 0] <= gt_bboxes_determine_side) & (gt_bboxes_determine_side < concat_regression_ranges[..., 0])
+        gray_condition2 = (concat_regression_ranges[..., 1] < gt_bboxes_determine_side) & (gt_bboxes_determine_side <= concat_gray_ranges[..., 1])
         gray_condition = (gray_condition1 | gray_condition2) & hit_condition
 
         # rank scores in ascending order for each point

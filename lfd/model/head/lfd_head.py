@@ -35,6 +35,7 @@ class LFDHead(nn.Module):
                  num_heads,
                  num_head_channels=128,
                  num_conv_layers=2,
+                 conv_kernel_size=1,
                  activation_cfg=dict(type='ReLU', inplace=True),
                  norm_cfg=dict(type='BatchNorm2d'),
                  classification_loss_type='SmoothL1Loss',
@@ -45,11 +46,13 @@ class LFDHead(nn.Module):
         super(LFDHead, self).__init__()
         assert classification_loss_type in ['BCEWithLogitsLoss', 'FocalLoss', 'CrossEntropyLoss']
         assert regression_loss_type in ['SmoothL1Loss', 'MSELoss', 'IoULoss', 'GIoULoss', 'DIoULoss', 'CIoULoss']
+        assert conv_kernel_size in [1, 3]
 
         self._num_classes = num_classes
         self._num_input_channels = num_input_channels
         self._num_head_channels = num_head_channels
         self._num_conv_layers = num_conv_layers
+        self._conv_kernel_size = conv_kernel_size
         self._activation_cfg = activation_cfg
         self._norm_cfg = norm_cfg
         self._share_head_flag = share_head_flag
@@ -91,7 +94,7 @@ class LFDHead(nn.Module):
                 in_channels = self._num_input_channels if i == 0 else self._num_head_channels
 
                 merge_path.append(
-                    nn.Conv2d(in_channels=in_channels, out_channels=self._num_head_channels, kernel_size=1, stride=1, padding=0, bias=True if self._norm_cfg is None else False)
+                    nn.Conv2d(in_channels=in_channels, out_channels=self._num_head_channels, kernel_size=self._conv_kernel_size, stride=1, padding=int(self._conv_kernel_size / 2), bias=True if self._norm_cfg is None else False)
                 )
                 if self._norm_cfg is not None:
                     temp_norm_cfg = self._norm_cfg.copy()
@@ -108,7 +111,7 @@ class LFDHead(nn.Module):
                 in_channels = self._num_input_channels if i == 0 else self._num_head_channels
 
                 classification_path.append(
-                    nn.Conv2d(in_channels=in_channels, out_channels=self._num_head_channels, kernel_size=1, stride=1, padding=0, bias=True if self._norm_cfg is None else False)
+                    nn.Conv2d(in_channels=in_channels, out_channels=self._num_head_channels, kernel_size=self._conv_kernel_size, stride=1, padding=int(self._conv_kernel_size / 2), bias=True if self._norm_cfg is None else False)
                 )
                 if self._norm_cfg is not None:
                     temp_norm_cfg = self._norm_cfg.copy()
@@ -120,7 +123,7 @@ class LFDHead(nn.Module):
                 classification_path.append(get_operator_from_cfg(self._activation_cfg))
 
                 regression_path.append(
-                    nn.Conv2d(in_channels=in_channels, out_channels=self._num_head_channels, kernel_size=1, stride=1, padding=0, bias=True if self._norm_cfg is None else False)
+                    nn.Conv2d(in_channels=in_channels, out_channels=self._num_head_channels, kernel_size=self._conv_kernel_size, stride=1, padding=int(self._conv_kernel_size / 2), bias=True if self._norm_cfg is None else False)
                 )
                 if self._norm_cfg is not None:
                     temp_norm_cfg = self._norm_cfg.copy()

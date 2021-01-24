@@ -26,7 +26,7 @@ class LFD(nn.Module):
                  point_strides=(8, 16, 32, 64, 128),
                  classification_loss_func=None,
                  regression_loss_func=None,
-                 distance_to_bbox_mode='sigmoid',
+                 distance_to_bbox_mode='exp',
                  classification_threshold=0.05,
                  nms_threshold=0.5,
                  pre_nms_bbox_limit=1000,
@@ -491,7 +491,10 @@ class LFD(nn.Module):
 
         neck_outputs = self._neck(backbone_outputs)
 
-        classification_outputs, regression_outputs = self._head(neck_outputs)
+        head_outputs = self._head(neck_outputs)
+
+        classification_outputs = head_outputs[0]
+        regression_outputs = head_outputs[1]
 
         #  变换输出的dim和shape，转化成tensor输出
         #  tensor 中的dim n必须要保留，为了DP能够正常多卡

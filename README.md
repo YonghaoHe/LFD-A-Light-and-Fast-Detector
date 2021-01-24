@@ -12,13 +12,59 @@ without all the bells and whistles.
 Compared to LFFD, LFD has the following features:
 * implemented with PyTorch, which is friendly for most people
 * support multi-class rather than single-class
-* less time for training
 * higher precision and lower inference latency
-* we maintain a [wiki]() for you to fully master the code
+* we maintain a [wiki]()(highly recommend) for you to fully master the code
 * the performance of LFD has been proved in more real-world applications
+* train from scratch on your own datasets, create your desired models with satisfactory model size and inference latency
 
 ### 1.2 Sneak Peek
+Before dive into the code, we present some performance results on several datasets in the beginning, 
+including precision and inference latency.
 
+#### Dataset 1: WIDERFACE (Single-class)
+##### Accuracy on val under the **SIO** schema proposed in [LFFD](https://arxiv.org/abs/1904.10633)
+
+Model Version|Easy Set|Medium Set|Hard Set
+------|--------|----------|--------
+**[v2](https://github.com/YonghaoHe/LFFD-A-Light-and-Fast-Face-Detector-for-Edge-Devices/tree/master/face_detection)**|0.875     |0.863       |0.754
+**WIDERFACE-L**| - | - | -
+**WIDERFACE-M**| - | - | -
+**WIDERFACE-S**| - | - | -
+**WIDERFACE-XS**| - | - | -
+
+> * for fairy comparison, WIDERFACE-L/M/S/XS have the similar detection range with v2, namely [4, 320] vs [10, 320], but WIDERFACE-L/M/S/XS have 
+different network structures.
+> * great improvement on Hard Set
+
+##### Inference latency on different resolutions and GPUs
+
+**Platform: RTX 2080Ti, CUDA 10.2, CUDNN 7.6.0.5, TensorRT 7.0.0.11**
+
+* batchsize=1, weight precision mode=FP32
+
+Model Version|320×240|640×480|1280×720|1920×1080|3840×2160|7680×4320
+-------------|-------|-------|--------|---------|---------|---------
+**v2**|1.06ms(946.04FPS)|2.12ms(472.04FPS)|5.02ms(199.10FPS)|10.80ms(92.63FPS)|42.41ms(23.58FPS)|167.25ms(5.98FPS)
+**WIDERFACE-L**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
+**WIDERFACE-M**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
+**WIDERFACE-S**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
+**WIDERFACE-XS**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
+
+> the results of v2 is directly get from [LFFD](https://github.com/YonghaoHe/LFFD-A-Light-and-Fast-Face-Detector-for-Edge-Devices/tree/master/face_detection),
+the Platform condition is slightly different from here.
+
+* batchsize=8, weight precision mode=FP16
+
+Model Version|320×240|640×480|1280×720|1920×1080|3840×2160|7680×4320
+-------------|-------|-------|--------|---------|---------|---------
+**WIDERFACE-L**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
+**WIDERFACE-M**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
+**WIDERFACE-S**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
+**WIDERFACE-XS**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
+
+> Ultra high throughput !
+
+#### Dataset 2: xxxxxxxxxx (Multi-class)
 
 ## 2. Get Started
 

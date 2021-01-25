@@ -491,7 +491,7 @@ class LFD(nn.Module):
 
         neck_outputs = self._neck(backbone_outputs)
 
-        head_outputs = self._head(neck_outputs)
+        head_outputs = self._head(neck_outputs)  # in case of outputs > 2, like fcos head (cls, reg, centerness)
 
         classification_outputs = head_outputs[0]
         regression_outputs = head_outputs[1]

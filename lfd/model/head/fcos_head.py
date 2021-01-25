@@ -17,27 +17,6 @@ class Scale(nn.Module):
         return x * self._scale
 
 
-class FixedBatchNorm2d(nn.Module):
-    """
-    BatchNorm2d where the batch statistics are initialized and are fixed
-    The affine parameters are updated during the training phase
-    """
-
-    def __init__(self, n):
-        super(FixedBatchNorm2d, self).__init__()
-        self.weight = nn.Parameter(torch.ones(n))
-        self.bias = nn.Parameter(torch.zeros(n))
-        self.register_buffer("running_mean", torch.zeros(n))
-        self.register_buffer("running_var", torch.ones(n))
-
-    def forward(self, x):
-        scale = self.weight * self.running_var.rsqrt()
-        bias = self.bias - self.running_mean * scale
-        scale = scale.reshape(1, -1, 1, 1)
-        bias = bias.reshape(1, -1, 1, 1)
-        return x * scale.float().exp() + bias.float().exp()
-
-
 class FCOSHead(nn.Module):
 
     def __init__(self,
@@ -50,7 +29,7 @@ class FCOSHead(nn.Module):
         super(FCOSHead, self).__init__()
         if norm_cfg is not None:
             assert isinstance(norm_cfg, dict) and 'type' in norm_cfg
-            assert norm_cfg['type'] in ['BatchNorm2d', 'GroupNorm', 'FixedBatchNorm2d']
+            assert norm_cfg['type'] in ['BatchNorm2d', 'GroupNorm']
             if norm_cfg['type'] == 'GroupNorm':
                 assert 'num_groups' in norm_cfg
 
@@ -73,8 +52,6 @@ class FCOSHead(nn.Module):
                     norm = nn.BatchNorm2d(num_features=self._num_head_channels)
                 elif self._norm_cfg['type'] == 'GroupNorm':
                     norm = nn.GroupNorm(num_groups=self._norm_cfg['num_groups'], num_channels=self._num_head_channels)
-                elif self._norm_cfg['type'] == 'FixedBatchNorm2d':
-                    norm = FixedBatchNorm2d(self._num_head_channels)
                 else:
                     raise ValueError
                 self._classification_path.append(norm)
@@ -85,8 +62,6 @@ class FCOSHead(nn.Module):
                     norm = nn.BatchNorm2d(num_features=self._num_head_channels)
                 elif self._norm_cfg['type'] == 'GroupNorm':
                     norm = nn.GroupNorm(num_groups=self._norm_cfg['num_groups'], num_channels=self._num_head_channels)
-                elif self._norm_cfg['type'] == 'FixedBatchNorm2d':
-                    norm = FixedBatchNorm2d(self._num_head_channels)
                 else:
                     raise ValueError
                 self._regression_path.append(norm)
@@ -121,7 +96,7 @@ class FCOSHead(nn.Module):
                     nn.init.normal_(m.weight, mean=0, std=0.01)
                 if hasattr(m, 'bias') and m.bias is not None:
                     nn.init.constant_(m.bias, 0)
-            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm, FixedBatchNorm2d)):
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
                 if hasattr(m, 'weight'):
                     nn.init.constant_(m.weight, 1)
                 if hasattr(m, 'bias') and m.bias is not None:
@@ -132,7 +107,7 @@ class FCOSHead(nn.Module):
                     nn.init.normal_(m.weight, mean=0, std=0.01)
                 if hasattr(m, 'bias') and m.bias is not None:
                     nn.init.constant_(m.bias, 0)
-            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm, FixedBatchNorm2d)):
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
                 if hasattr(m, 'weight'):
                     nn.init.constant_(m.weight, 1)
                 if hasattr(m, 'bias') and m.bias is not None:

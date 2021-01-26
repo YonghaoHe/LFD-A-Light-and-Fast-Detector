@@ -71,23 +71,28 @@ class TypicalCOCOTrainingRegionSampler(BaseRegionSampler):
 class RandomBBoxCropRegionSampler(BaseRegionSampler):
     """
     workflow:
-    1, randomly resize the image according to resize_range
+    1, randomly resize the image according to resize_range, resize_prob controls the probability of performing resize
     2, (pos sample) randomly select a bbox, randomly choose a region with crop_size, containing the selected bbox
        (neg sample) randomly crop a region with crop_size
     """
 
-    def __init__(self, crop_size, resize_range=(0.5, 1.5)):
+    def __init__(self, crop_size, resize_range=(0.5, 1.5), resize_prob=1.0):
         assert isinstance(crop_size, int)
         assert isinstance(resize_range, (tuple, list))
+        assert 0 <= resize_prob <= 1.
 
         self._crop_size = crop_size
         self._resize_range = resize_range
+        self._resize_prob = resize_prob
 
     def __call__(self, sample):
         assert 'image' in sample
 
-        resize_scale = random.random() * (self._resize_range[1] - self._resize_range[0]) + self._resize_range[0]
         image = sample['image']
+        if random.random() < self._resize_prob:
+            resize_scale = random.random() * (self._resize_range[1] - self._resize_range[0]) + self._resize_range[0]
+        else:
+            resize_scale = 1.0
         image = cv2.resize(image, (0, 0), fx=resize_scale, fy=resize_scale)
 
         bboxes = sample['bboxes'] if 'bboxes' in sample else []

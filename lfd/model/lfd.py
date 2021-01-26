@@ -518,13 +518,14 @@ class LFD(nn.Module):
 
         return classification_output_tensor, regression_output_tensor
 
-    def predict_for_single_image(self, image, aug_pipeline, classification_threshold=None, nms_threshold=None):
+    def predict_for_single_image(self, image, aug_pipeline, classification_threshold=None, nms_threshold=None, class_agnostic=False):
         """
         for easy prediction
         :param image: image can be string path or numpy array
         :param aug_pipeline: image pre-processing like flip, normalization
         :param classification_threshold: higher->higher precision, lower->higher recall
         :param nms_threshold:
+        :param class_agnostic:
         """
         assert isinstance(image, str) or isinstance(image, numpy.ndarray)
         if isinstance(image, str):
@@ -605,6 +606,8 @@ class LFD(nn.Module):
 
         if nms_threshold:
             self._nms_cfg.update({'iou_thr': nms_threshold})
+        if class_agnostic:
+            self._nms_cfg.update({'class_agnostic': class_agnostic})
         nms_bboxes, nms_labels = multiclass_nms(
             multi_bboxes=predicted_bboxes,
             multi_scores=predicted_classification,

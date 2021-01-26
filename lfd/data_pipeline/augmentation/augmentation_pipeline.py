@@ -5,7 +5,11 @@ from albumentations import *
 __all__ = ['typical_coco_train_pipeline',
            'typical_coco_val_pipeline',
            'simple_widerface_train_pipeline',
-           'simple_widerface_val_pipeline']
+           'simple_widerface_val_pipeline',
+           'caffe_imagenet_normalize',
+           'standard_normalize',
+           'simple_normalize',
+           'bbox_param']
 
 random_horizon_flip = HorizontalFlip(p=0.5)
 

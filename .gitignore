@@ -9,21 +9,9 @@
 /lfd/deployment/tensorrt/temp/*
 /build/
 
-/WIDERFACE_train/
-!/WIDERFACE_train/evaluation.py
-!/WIDERFACE_train/timing_inference_latency.py
-!/WIDERFACE_train/WIDERFACE_LFD_L.py
-!/WIDERFACE_train/WIDERFACE_LFD_M.py
-!/WIDERFACE_train/WIDERFACE_LFD_S.py
-!/WIDERFACE_train/WIDERFACE_LFD_XS.py
+/local_WIDERFACE_train/
 
+/local_COCO_train/
 /COCO_train/
-!/COCO_train/__init__.py
-!/COCO_train/COCO_FCOS_R50.py
-!/COCO_train/pack_coco.py
 
-/TT100K_train/
-!/TT100K_train/generate_neg_images.py
-!/TT100K_train/pack_tt100k.py
-!/TT100K_train/TT100K_LFD_L.py
-!/TT100K_train/TT100K_LFD_S.py
+/local_TT100K_train/

@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-# author: Yonghao He
-# description:
-
 import shutil
 import os
 import time
@@ -17,11 +14,14 @@ from lfd.data_pipeline.dataset import Dataset
 from lfd.data_pipeline.sampler import *
 from lfd.data_pipeline.augmentation import *
 from lfd.execution.executor import Executor
+from lfd.execution.utils import customize_exception_hook
 
 assert torch.cuda.is_available(), 'GPU training supported only!'
 
-# record some information about a certain training
-memo = ''
+memo = 'WIDERFACE M' \
+       'head: share, path merge, with GN' \
+       'CE as classification loss, loss weight is set to 1.0' \
+       'IoULoss as regression loss, distance_to_bbox_mode is set to sigmoid, loss weight is set to 1.0'
 
 # all config parameters will be stored in config_dict
 config_dict = dict()
@@ -40,11 +40,14 @@ def prepare_common_settings():
     # log file path
     config_dict['log_path'] = os.path.join(config_dict['work_dir'], 'log_' + config_dict['timestamp'] + '.log')
 
+    # set exception hook, record all output info including exceptions and errors
+    sys.excepthook = customize_exception_hook(os.path.join(config_dict['work_dir'], 'exception_log_' + config_dict['timestamp'] + '.log'))
+
     # training epochs
-    config_dict['training_epochs'] = 300
+    config_dict['training_epochs'] = 1000
 
     # reproductive
-    config_dict['seed'] = 10
+    config_dict['seed'] = 666
     config_dict['cudnn_benchmark'] = True
     if config_dict['seed'] is not None:
         set_random_seed(config_dict['seed'])
@@ -55,60 +58,13 @@ def prepare_common_settings():
     assert isinstance(config_dict['gpu_list'], list)
 
     # display interval in iterations
-    config_dict['display_interval'] = 1
+    config_dict['display_interval'] = 100
 
     # checkpoint save interval in epochs
-    config_dict['save_interval'] = 10
+    config_dict['save_interval'] = 100
 
     # validation interval in epochs
     config_dict['val_interval'] = 0
-
-
-'''
-prepare data pipeline -----------------------------------------------------------------------------------------
-'''
-
-
-def prepare_data_pipeline():
-    # batch size
-    config_dict['batch_size'] = 16
-
-    # number of train data_loader workers
-    config_dict['num_train_workers'] = 4
-
-    # number of val data_loader workers
-    config_dict['num_val_workers'] = 0
-
-    # construct train data_loader
-    config_dict['train_dataset_path'] = 'xxxxxxxxx'
-    train_dataset = Dataset(load_path=config_dict['train_dataset_path'])
-    train_dataset_sampler = RandomWithNegDatasetSampler(
-        train_dataset,
-        batch_size=config_dict['batch_size'],
-        neg_ratio=0.1,
-        shuffle=True,
-        ignore_last=False
-    )
-    train_region_sampler = RandomBBoxCropRegionSampler(crop_size=512, resize_range=(0.5, 1.5))
-    config_dict['train_data_loader'] = DataLoader(dataset=train_dataset,
-                                                  dataset_sampler=train_dataset_sampler,
-                                                  region_sampler=train_region_sampler,
-                                                  augmentation_pipeline=simple_widerface_train_pipeline,
-                                                  num_workers=config_dict['num_train_workers'])
-
-    # construct val data_loader
-    config_dict['val_dataset_path'] = 'xxxxxxxxxx'
-    val_dataset = Dataset(load_path=config_dict['val_dataset_path'])
-    val_dataset_sampler = RandomDatasetSampler(dataset=val_dataset,
-                                               batch_size=config_dict['batch_size'],
-                                               shuffle=False,
-                                               ignore_last=False)
-    val_region_sampler = IdleRegionSampler()
-    config_dict['val_data_loader'] = DataLoader(dataset=val_dataset,
-                                                dataset_sampler=val_dataset_sampler,
-                                                region_sampler=val_region_sampler,
-                                                augmentation_pipeline=simple_widerface_val_pipeline,
-                                                num_workers=config_dict['num_val_workers'])
 
 
 '''
@@ -120,25 +76,29 @@ def prepare_model():
     # input image channels: BGR--3, gray--1
     config_dict['num_input_channels'] = 3
 
-    classifiation_loss = FocalLoss(use_sigmoid=True,
-                                   gamma=2.0,
-                                   alpha=0.25,
-                                   reduction='mean',
-                                   loss_weight=1.0)
-    regression_loss = torch.nn.SmoothL1Loss(reduction='mean')
+    classification_loss = CrossEntropyLoss(
+        reduction='mean',
+        loss_weight=1.0
+    )
+
+    regression_loss = IoULoss(
+        eps=1e-6,
+        reduction='mean',
+        loss_weight=1.0
+    )
 
     # number of classes
     config_dict['num_classes'] = 1
     config_dict['backbone_init_param_file_path'] = None  # if no pretrained weights, set to None
     lfd_backbone = LFDResNet(
-        block_mode='fast',  # affect block type
+        block_mode='faster',  # affect block type
         stem_mode='fast',  # affect stem type
-        body_mode='fast',  # affect body architecture
+        body_mode=None,  # affect body architecture
         input_channels=config_dict['num_input_channels'],
         stem_channels=64,
-        body_architecture=None,
-        body_channels=None,
-        out_indices=((0, 3), (1, 1), (2, 1), (3, 0), (4, 0)),
+        body_architecture=[3, 2, 1, 1, 1],
+        body_channels=[64, 64, 64, 128, 128],
+        out_indices=((0, 2), (1, 1), (2, 0), (3, 0), (4, 0)),
         frozen_stages=-1,
         activation_cfg=dict(type='ReLU', inplace=True),
         norm_cfg=dict(type='BatchNorm2d'),
@@ -161,27 +121,24 @@ def prepare_model():
         num_head_channels=128,
         num_conv_layers=2,
         activation_cfg=dict(type='ReLU', inplace=True),
-        norm_cfg=dict(type='BatchNorm2d'),
-        share_head_flag=False,
-        merge_path_flag=False,
-        classification_loss_type=type(classifiation_loss).__name__
+        norm_cfg=dict(type='GroupNorm', num_groups=16),
+        share_head_flag=True,
+        merge_path_flag=True,
+        classification_loss_type=type(classification_loss).__name__,
+        regression_loss_type=type(regression_loss).__name__
     )
-
+    config_dict['detection_scales'] = ((4, 20), (20, 40), (40, 80), (80, 160), (160, 320))
     config_dict['model'] = LFD(
         backbone=lfd_backbone,
         neck=lfd_neck,
         head=lfd_head,
         num_classes=config_dict['num_classes'],
-        regression_ranges=((0, 16), (16, 32), (32, 64), (64, 128), (128, 256)),
+        regression_ranges=config_dict['detection_scales'],
         gray_range_factors=(0.9, 1.1),
         point_strides=lfd_neck.num_output_strides_list,
-        classification_loss_func=classifiation_loss,
+        classification_loss_func=classification_loss,
         regression_loss_func=regression_loss,
-        distance_to_bbox_mode='exp',
-        classification_threshold=0.05,
-        nms_threshold=0.5,
-        pre_nms_bbox_limit=1000,
-        post_nms_bbox_limit=100,
+        distance_to_bbox_mode='sigmoid'
     )
 
     # init param weights file
@@ -198,6 +155,57 @@ def prepare_model():
 
 
 '''
+prepare data loader -----------------------------------------------------------------------------------------
+'''
+
+
+def prepare_data_pipeline():
+    # batch size
+    config_dict['batch_size'] = 64
+
+    # number of train data_loader workers
+    config_dict['num_train_workers'] = 12
+
+    # number of val data_loader workers
+    config_dict['num_val_workers'] = 0
+
+    # construct train data_loader
+    config_dict['train_dataset_path'] = '../WIDERFACE_pack/widerface_train.pkl'
+    train_dataset = Dataset(load_path=config_dict['train_dataset_path'])
+    train_dataset_sampler = RandomWithNegDatasetSampler(
+        train_dataset,
+        batch_size=config_dict['batch_size'],
+        neg_ratio=0.2,
+        shuffle=True,
+        ignore_last=False
+    )
+    train_region_sampler = RandomBBoxCropWithRangeSelectionRegionSampler(crop_size=480,
+                                                                         detection_ranges=config_dict['detection_scales'],
+                                                                         range_selection_probs=[1, 1, 1, 1, 1],
+                                                                         lock_threshold=30)
+
+    config_dict['train_data_loader'] = DataLoader(dataset=train_dataset,
+                                                  dataset_sampler=train_dataset_sampler,
+                                                  region_sampler=train_region_sampler,
+                                                  augmentation_pipeline=simple_widerface_train_pipeline,
+                                                  num_workers=config_dict['num_train_workers'])
+
+    # construct val data_loader
+    # config_dict['val_dataset_path'] = 'xxxxxxxxxx'
+    # val_dataset = Dataset(load_path=config_dict['val_dataset_path'])
+    # val_dataset_sampler = RandomDatasetSampler(dataset=val_dataset,
+    #                                            batch_size=config_dict['batch_size'],
+    #                                            shuffle=False,
+    #                                            ignore_last=False)
+    # val_region_sampler = IdleRegionSampler()
+    # config_dict['val_data_loader'] = DataLoader(dataset=val_dataset,
+    #                                             dataset_sampler=val_dataset_sampler,
+    #                                             region_sampler=val_region_sampler,
+    #                                             augmentation_pipeline=simple_widerface_val_pipeline,
+    #                                             num_workers=config_dict['num_val_workers'])
+
+
+'''
 learning rate and optimizer --------------------------------------------------------------------------------
 optimizer and scheduler can be customized
 '''
@@ -211,16 +219,17 @@ def prepare_optimizer():
                                                lr=config_dict['learning_rate'],
                                                momentum=config_dict['momentum'],
                                                weight_decay=config_dict['weight_decay'])
-    config_dict['optimizer_grad_clip_cfg'] = None  # dict(max_norm=35, norm_type=2)
+
+    config_dict['optimizer_grad_clip_cfg'] = dict(max_norm=10, norm_type=2, duration=20)
 
     # multi step lr scheduler is used here
-    config_dict['milestones'] = [150, 250]
+    config_dict['milestones'] = [500, 700, 900]
     config_dict['gamma'] = 0.1
     assert max(config_dict['milestones']) < config_dict['training_epochs'], 'the max value in milestones should be less than total epochs!'
 
     config_dict['lr_scheduler'] = torch.optim.lr_scheduler.MultiStepLR(config_dict['optimizer'],
                                                                        milestones=config_dict['milestones'],
-                                                                       gamma=config_dict['gamma'])  # scheduler
+                                                                       gamma=config_dict['gamma'])  # scheduler 也需要被保存在checkpoint中
 
     # add warmup parameters
     config_dict['warmup_setting'] = dict(by_epoch=False,
@@ -235,9 +244,9 @@ def prepare_optimizer():
 if __name__ == '__main__':
     prepare_common_settings()
 
-    prepare_data_pipeline()
-
     prepare_model()
+
+    prepare_data_pipeline()
 
     prepare_optimizer()
 

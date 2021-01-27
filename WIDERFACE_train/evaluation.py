@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-
 import os
 import math
-from ..data_pipeline.augmentation import *
-__all__ = ['SIO_evaluation']
+from lfd.execution.utils import load_checkpoint
+from lfd.data_pipeline.augmentation import *
 
 
 def SIO_evaluation(model,
@@ -27,7 +26,8 @@ def SIO_evaluation(model,
                 image=os.path.join(parent, file_name),
                 aug_pipeline=simple_widerface_val_pipeline,
                 classification_threshold=classification_threshold,
-                nms_threshold=nms_threshold
+                nms_threshold=nms_threshold,
+                class_agnostic=True
             )
 
             event_name = parent.split('/')[-1]
@@ -43,3 +43,31 @@ def SIO_evaluation(model,
 
             counter += 1
             print('[%5d] %s is processed.' % (counter, file_name))
+
+
+def run_SIO_evaluation():
+
+    # set model to be tested
+    from WIDERFACE_LFD_XS_work_dir_20210120_125717.WIDERFACE_LFD_XS \
+        import config_dict, prepare_model
+    # prepare model --------------------------------------------------------
+    prepare_model()
+    param_file_path = './WIDERFACE_LFD_XS_work_dir_20210120_125717/epoch_1000.pth'
+    load_checkpoint(config_dict['model'], load_path=param_file_path, strict=True)
+
+    val_image_root = '/home/yonghaohe/datasets/WIDER_FACE/WIDER_val/images'
+    results_save_root = './WIDERFACE_evaluation/LFD_XS_20210120_125717'
+    classification_threshold = 0.01
+    nms_threshold = 0.4
+
+    SIO_evaluation(
+        model=config_dict['model'],
+        val_image_root=val_image_root,
+        results_save_root=results_save_root,
+        classification_threshold=classification_threshold,
+        nms_threshold=nms_threshold
+    )
+
+
+if __name__ == '__main__':
+    run_SIO_evaluation()

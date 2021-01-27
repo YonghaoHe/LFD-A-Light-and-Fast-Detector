@@ -102,7 +102,8 @@ def inference_latency_evaluation(model,
                       f=temp_onnx_file_path,
                       verbose=True,
                       input_names=input_names,
-                      output_names=output_names
+                      output_names=output_names,
+                      opset_version=9
                       )
     print('Converting successfully---------------')
 
@@ -110,18 +111,17 @@ def inference_latency_evaluation(model,
     onnx.checker.check_model(onnx_model)
 
     temp_engine_save_path = os.path.join(os.path.dirname(__file__), 'temp', 'temp.engine')
-    build_tensorrt_engine(temp_onnx_file_path,
-                          temp_engine_save_path,
-                          precision_mode=precision_mode,
-                          max_workspace_size=max_workspace_size,  # in bytes
-                          max_batch_size=input_shapes[0][0],
-                          min_timing_iterations=min_timing_iterations,
-                          avg_timing_iterations=avg_timing_iterations,
-                          int8_calibrator=int8_calibrator)
-
-    timing_engine(engine_file_path=temp_engine_save_path,
-                  batch_size=input_shapes[0][0],
-                  num_input_channels=input_shapes[0][1],
-                  height=input_shapes[0][2],
-                  width=input_shapes[0][3],
-                  timing_loops=timing_loops)
+    if build_tensorrt_engine(temp_onnx_file_path,
+                             temp_engine_save_path,
+                             precision_mode=precision_mode,
+                             max_workspace_size=max_workspace_size,  # in bytes
+                             max_batch_size=input_shapes[0][0],
+                             min_timing_iterations=min_timing_iterations,
+                             avg_timing_iterations=avg_timing_iterations,
+                             int8_calibrator=int8_calibrator):
+        timing_engine(engine_file_path=temp_engine_save_path,
+                      batch_size=input_shapes[0][0],
+                      num_input_channels=input_shapes[0][1],
+                      height=input_shapes[0][2],
+                      width=input_shapes[0][3],
+                      timing_loops=timing_loops)

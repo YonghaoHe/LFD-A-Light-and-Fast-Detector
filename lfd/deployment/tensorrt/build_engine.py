@@ -131,12 +131,15 @@ def build_tensorrt_engine(onnx_file_path,
     config.min_timing_iterations = min_timing_iterations
     config.avg_timing_iterations = avg_timing_iterations
     builder.max_batch_size = max_batch_size
-
-    engine = builder.build_engine(network, config)
+    try:
+        engine = builder.build_engine(network, config)
+    except:
+        print('Engine build unsuccessfully!')
+        return False
 
     if engine is None:
         print('Engine build unsuccessfully!')
-        return
+        return False
 
     if not os.path.exists(os.path.dirname(engine_save_path)):
         os.makedirs(os.path.dirname(engine_save_path))
@@ -146,4 +149,5 @@ def build_tensorrt_engine(onnx_file_path,
         fout.write(serialized_engine)
 
     print('Engine built successfully!')
+    return True
 

@@ -2,7 +2,7 @@
 
 #### Background
 For single-class detection, we apply LFD to [WIDERFACE](http://shuoyang1213.me/WIDERFACE/) dataset which is large and diverse.
-We design 4 kinds of network structures with different sizes of weights and inference latency:
+We design 4 types of network structures with different sizes of weights and inference latency:
 * LFD_L — Large
 * LFD_M — Medium
 * LFD_S — Small

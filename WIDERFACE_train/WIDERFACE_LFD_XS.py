@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# author: Yonghao He
+# description:
 import sys
 import shutil
 import os
@@ -55,7 +57,7 @@ def prepare_common_settings():
     set_cudnn_backend(config_dict['cudnn_benchmark'])
 
     # GPU list
-    config_dict['gpu_list'] = [3, 1, 2]
+    config_dict['gpu_list'] = [1, 2, 3]
     assert isinstance(config_dict['gpu_list'], list)
 
     # display interval in iterations
@@ -66,6 +68,7 @@ def prepare_common_settings():
 
     # validation interval in epochs
     config_dict['val_interval'] = 0
+
 
 
 '''
@@ -97,9 +100,9 @@ def prepare_model():
         body_mode=None,  # affect body architecture
         input_channels=config_dict['num_input_channels'],
         stem_channels=32,
-        body_architecture=[2, 1, 1, 2],
+        body_architecture=[4, 2, 2, 3],
         body_channels=[64, 64, 64, 64],
-        out_indices=((0, 1), (1, 0), (2, 0), (3, 0), (3, 1)),
+        out_indices=((0, 3), (1, 1), (2, 1), (3, 0), (3, 2)),
         frozen_stages=-1,
         activation_cfg=dict(type='ReLU', inplace=True),
         norm_cfg=dict(type='BatchNorm2d'),
@@ -155,6 +158,7 @@ def prepare_model():
     config_dict['evaluator'] = None
 
 
+
 '''
 prepare data loader -----------------------------------------------------------------------------------------
 '''
@@ -165,13 +169,13 @@ def prepare_data_pipeline():
     config_dict['batch_size'] = 64
 
     # number of train data_loader workers
-    config_dict['num_train_workers'] = 10
+    config_dict['num_train_workers'] = 12
 
     # number of val data_loader workers
     config_dict['num_val_workers'] = 0
 
     # construct train data_loader
-    config_dict['train_dataset_path'] = '../WIDERFACE_pack/widerface_train.pkl'
+    config_dict['train_dataset_path'] = './WIDERFACE_pack/widerface_train.pkl'
     train_dataset = Dataset(load_path=config_dict['train_dataset_path'])
     train_dataset_sampler = RandomWithNegDatasetSampler(
         train_dataset,
@@ -181,10 +185,9 @@ def prepare_data_pipeline():
         ignore_last=False
     )
 
-    train_region_sampler = RandomBBoxCropWithRangeSelectionRegionSampler(crop_size=480,
-                                                                         detection_ranges=config_dict['detection_scales'],
-                                                                         range_selection_probs=[1, 1, 1, 1, 1],
-                                                                         lock_threshold=30)
+    train_region_sampler = RandomBBoxCropRegionSampler(crop_size=480,
+                                                       resize_range=(0.5, 1.5),
+                                                       resize_prob=0.5)
 
     config_dict['train_data_loader'] = DataLoader(dataset=train_dataset,
                                                   dataset_sampler=train_dataset_sampler,
@@ -222,7 +225,7 @@ def prepare_optimizer():
                                                momentum=config_dict['momentum'],
                                                weight_decay=config_dict['weight_decay'])
 
-    config_dict['optimizer_grad_clip_cfg'] = dict(max_norm=10, norm_type=2, duration=20)
+    config_dict['optimizer_grad_clip_cfg'] = dict(max_norm=10, norm_type=2, duration=5)
 
     # multi step lr scheduler is used here
     config_dict['milestones'] = [500, 700, 900]

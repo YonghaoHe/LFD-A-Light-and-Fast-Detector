@@ -13,7 +13,7 @@ Compared to LFFD, LFD has the following features:
 * implemented with PyTorch, which is friendly for most people
 * support multi-class rather than single-class
 * higher precision and lower inference latency
-* we maintain a [wiki]()(highly recommend) for you to fully master the code
+* we maintain a [wiki]() (highly recommend) for you to fully master the code
 * the performance of LFD has been proved in more real-world applications
 * train from scratch on your own datasets, create your desired models with satisfactory model size and inference latency
 
@@ -27,10 +27,10 @@ including precision and inference latency.
 Model Version|Easy Set|Medium Set|Hard Set
 ------|--------|----------|--------
 **[v2](https://github.com/YonghaoHe/LFFD-A-Light-and-Fast-Face-Detector-for-Edge-Devices/tree/master/face_detection)**|0.875     |0.863       |0.754
-**WIDERFACE-L**| - | - | -
-**WIDERFACE-M**| - | - | -
-**WIDERFACE-S**| - | - | -
-**WIDERFACE-XS**| - | - | -
+**WIDERFACE-L**|0.882 |0.886 |0.857
+**WIDERFACE-M**|0.872 |0.879 |0.848
+**WIDERFACE-S**|0.- |0.- |0.-
+**WIDERFACE-XS**|0.865 |0.875 |0.832
 
 > * for fairy comparison, WIDERFACE-L/M/S/XS have the similar detection range with v2, namely [4, 320] vs [10, 320], but WIDERFACE-L/M/S/XS have 
 different network structures.
@@ -38,33 +38,62 @@ different network structures.
 
 ##### Inference latency on different resolutions and GPUs
 
-**Platform: RTX 2080Ti, CUDA 10.2, CUDNN 7.6.0.5, TensorRT 7.0.0.11**
+**Platform: RTX 2080Ti, CUDA 10.2, CUDNN 8.0.4, TensorRT 7.2.2.3**
 
 * batchsize=1, weight precision mode=FP32
 
-Model Version|320×240|640×480|1280×720|1920×1080|3840×2160|7680×4320
--------------|-------|-------|--------|---------|---------|---------
-**v2**|1.06ms(946.04FPS)|2.12ms(472.04FPS)|5.02ms(199.10FPS)|10.80ms(92.63FPS)|42.41ms(23.58FPS)|167.25ms(5.98FPS)
-**WIDERFACE-L**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
-**WIDERFACE-M**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
-**WIDERFACE-S**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
-**WIDERFACE-XS**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
+Model Version|640×480|1280×720|1920×1080|3840×2160
+-------------|-------|--------|---------|---------
+**v2**|2.12ms(472.04FPS)|5.02ms(199.10FPS)|10.80ms(92.63FPS)|42.41ms(23.58FPS)
+**WIDERFACE-L**|2.67ms(374.19FPS)|6.31ms(158.38FPS)|13.51ms(74.04FPS)|94.61ms(10.57FPS)
+**WIDERFACE-M**|2.47ms(404.23FPS)|5.70ms(175.38FPS)|12.28ms(81.43FPS)|87.90ms(11.38FPS)
+**WIDERFACE-S**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
+**WIDERFACE-XS**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
 
 > the results of v2 is directly get from [LFFD](https://github.com/YonghaoHe/LFFD-A-Light-and-Fast-Face-Detector-for-Edge-Devices/tree/master/face_detection),
 the Platform condition is slightly different from here.
 
-* batchsize=8, weight precision mode=FP16
+* batchsize=1, weight precision mode=FP16
 
-Model Version|320×240|640×480|1280×720|1920×1080|3840×2160|7680×4320
--------------|-------|-------|--------|---------|---------|---------
-**WIDERFACE-L**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
-**WIDERFACE-M**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
-**WIDERFACE-S**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
-**WIDERFACE-XS**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
+Model Version|640×480|1280×720|1920×1080|3840×2160
+-------------|-------|--------|---------|---------
+**WIDERFACE-L**|1.68ms(594.12FPS)|3.69ms(270.78FPS)|7.66ms(130.51FPS)|28.65ms(34.90FPS)
+**WIDERFACE-M**|1.61ms(622.42FPS)|3.51ms(285.13FPS)|7.31ms(136.79FPS)|27.32ms(36.60FPS)
+**WIDERFACE-S**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
+**WIDERFACE-XS**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
 
-> Ultra high throughput !
+> It can be observed that FP16 mode is evidently faster than FP32 mode. So in deployment, FP16 is highly recommended if possible.
 
-#### Dataset 2: xxxxxxxxxx (Multi-class)
+#### Dataset 2: TT100K (Multi-class)
+##### Precision&Recall on test set of [TT100K[1]](http://cg.cs.tsinghua.edu.cn/traffic-sign/)
+
+Model Version|Precision|Recall
+------|--------|----------
+**FastRCNN in [1]**|0.5014    |0.5554
+**Method proposed in [1]**|0.8773 | 0.9065
+**LFD_L**|0.9205 |0.9129 
+**LFD_S**|0.9202 |0.9042 
+> We use only train split (6105 images) for model training, and test our models on test split (3071 images). In [1], authors extended the training set: `Classes with
+between 100 and 1000 instances in the training set were augmented to give them 1000 instances`. But the augmented data is not released. That means we use much less
+data than [1] used for training. However, as you can see, our models can still achieve better performance.
+
+##### Inference latency on different resolutions and GPUs
+
+**Platform: RTX 2080Ti, CUDA 10.2, CUDNN 8.0.4, TensorRT 7.2.2.3**
+
+* batchsize=1, weight precision mode=FP32
+
+Model Version|1280×720|1920×1080|3840×2160
+-------------|-------|-------|--------
+**LFD_L**|9.87ms(101.35FPS)|21.56ms(46.38FPS)|166.66ms(6.00FPS)
+**LFD_S**|4.31ms(232.27FPS)|8.96ms(111.64FPS)|34.01ms(29.36FPS)
+
+* batchsize=1, weight precision mode=FP16
+
+Model Version|1280×720|1920×1080|3840×2160
+-------------|-------|-------|--------
+**LFD_L**|6.28ms(159.27FPS)|13.09ms(76.38FPS)|49.79ms(20.09FPS)
+**LFD_S**|3.03ms(329.68FPS)|6.27ms(159.54FPS)|23.41ms(42.72FPS)
 
 ## 2. Get Started
 
@@ -73,13 +102,13 @@ Model Version|320×240|640×480|1280×720|1920×1080|3840×2160|7680×4320
 **Prerequirements**  
 * python = 3.6
 * albumentations = 0.4.6
-* torch = 1.4
-* torchvision = 0.5.0
+* torch = 1.5
+* torchvision = 0.6.0
 * cv2 = 4.0
 * numpy = 1.16
 * pycocotools = 2.0.1
 
-> All above versions are employed, other versions may work as well.
+> All above versions are employed, newer versions may work as well.
 
 **Build Internal Libs**
 

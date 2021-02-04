@@ -11,7 +11,7 @@ These structures can be adopted as templates for your own tasks, or inspire you 
 #### Performance
 We use only train split (6105 images) for model training, and test our models on test split (3071 images). In [1], authors extended the training set: `Classes with
 between 100 and 1000 instances in the training set were augmented to give them 1000 instances`. But the augmented data is not released. That means we use much less
-data than [1] used for training. However, as you can see below, our models can achieve better performance.
+data than [1] used for training. However, as you can see below, our models can still achieve better performance.
 
 We use the evaluation code release by [1], precision and recall are computed.
 

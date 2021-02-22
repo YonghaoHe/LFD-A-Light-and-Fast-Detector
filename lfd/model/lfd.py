@@ -4,8 +4,10 @@ import torch
 import torch.nn as nn
 import numpy
 import cv2
+import math
 from ..data_pipeline.dataset import Sample
 from .utils import multiclass_nms
+import pycuda.driver as cuda
 
 __all__ = ['LFD']
 
@@ -550,6 +552,151 @@ class LFD(nn.Module):
             predicted_classification, predicted_regression = self.forward(data_batch)
         predicted_classification = predicted_classification[0]
         predicted_regression = predicted_regression[0]
+
+        all_point_coordinates_list = self.generate_point_coordinates(self._head_indexes_to_feature_map_sizes)
+        expanded_regression_ranges_list = [all_point_coordinates_list[i].new_tensor(self._regression_ranges[i])[None].expand_as(all_point_coordinates_list[i])
+                                           for i in range(self._num_heads)]
+
+        concat_point_coordinates = torch.cat(all_point_coordinates_list, dim=0)
+        concat_regression_ranges = torch.cat(expanded_regression_ranges_list, dim=0)
+
+        if type(self._classification_loss_func).__name__ in ['CrossEntropyLoss']:
+            predicted_classification = predicted_classification.softmax(dim=1)
+            predicted_classification = predicted_classification[:, :-1]  # remove bg
+        else:
+            predicted_classification = predicted_classification.sigmoid()
+
+        concat_point_coordinates = concat_point_coordinates.to(predicted_regression.device)
+        concat_regression_ranges = concat_regression_ranges.to(predicted_regression.device)
+
+        classification_threshold = classification_threshold if classification_threshold is not None else self._classification_threshold
+        max_scores = predicted_classification.max(dim=1)[0]
+        selected_indexes = torch.where(max_scores > classification_threshold)[0]
+        if selected_indexes.numel() == 0:
+            return []
+
+        predicted_classification = predicted_classification[selected_indexes]
+        predicted_regression = predicted_regression[selected_indexes]
+        concat_point_coordinates = concat_point_coordinates[selected_indexes]
+        concat_regression_ranges = concat_regression_ranges[selected_indexes]
+
+        #  calculate bboxes' x1 y1 x2 y2
+        if self._regression_loss_type == 'independent':
+            predicted_regression = predicted_regression * concat_regression_ranges[..., 1, None]
+            x1 = concat_point_coordinates[:, 0] - predicted_regression[:, 0]
+            x1 = x1.clamp(min=0, max=image_width)
+            y1 = concat_point_coordinates[:, 1] - predicted_regression[:, 1]
+            y1 = y1.clamp(min=0, max=image_height)
+            x2 = concat_point_coordinates[:, 0] + predicted_regression[:, 2]
+            x2 = x2.clamp(min=0, max=image_width)
+            y2 = concat_point_coordinates[:, 1] + predicted_regression[:, 3]
+            y2 = y2.clamp(min=0, max=image_height)
+            predicted_bboxes = torch.stack([x1, y1, x2, y2], -1)
+        else:
+            if self._distance_to_bbox_mode == 'exp':
+                predicted_regression = predicted_regression.float().exp()
+                predicted_bboxes = self.distance2bbox(concat_point_coordinates, predicted_regression, max_shape=(image_height, image_width))
+            elif self._distance_to_bbox_mode == 'sigmoid':
+                concat_regression_ranges_max = concat_regression_ranges.max(dim=-1)[0]
+                predicted_regression = predicted_regression.sigmoid() * concat_regression_ranges_max[..., None]
+                predicted_bboxes = self.distance2bbox(concat_point_coordinates, predicted_regression, max_shape=(image_height, image_width))
+            else:
+                raise ValueError('Unknown distance_to_bbox mode!')
+        # add BG label for multi class nms
+        bg_label_padding = predicted_classification.new_zeros(predicted_classification.size(0), 1)
+        predicted_classification = torch.cat([predicted_classification, bg_label_padding], dim=1)
+
+        if nms_threshold:
+            self._nms_cfg.update({'iou_thr': nms_threshold})
+        if class_agnostic:
+            self._nms_cfg.update({'class_agnostic': class_agnostic})
+        nms_bboxes, nms_labels = multiclass_nms(
+            multi_bboxes=predicted_bboxes,
+            multi_scores=predicted_classification,
+            score_thr=classification_threshold,
+            nms_cfg=self._nms_cfg,
+            max_num=-1,
+            score_factors=None
+        )
+
+        if nms_bboxes.size(0) == 0:
+            return []
+
+        # [x1, y1, x2, y2, score] -> [x1, y1, w, h, score]
+        nms_bboxes[:, 2] = nms_bboxes[:, 2] - nms_bboxes[:, 0] + 1
+        nms_bboxes[:, 3] = nms_bboxes[:, 3] - nms_bboxes[:, 1] + 1
+        # each row : [class_label, score, x1, y1, w, h]
+        results = torch.cat([nms_labels[:, None].to(nms_bboxes), nms_bboxes[:, [4, 0, 1, 2, 3]]], dim=1)
+        # from tensor to list
+        results = results.tolist()
+        results = [[int(temp_result[0])] + temp_result[1:] for temp_result in results]
+
+        return results
+
+    def predict_for_single_image_with_tensorrt(self,
+                                               image,
+                                               input_buffers,
+                                               output_buffers,
+                                               bindings,
+                                               stream,
+                                               engine,
+                                               tensorrt_engine_context,
+                                               aug_pipeline,
+                                               classification_threshold=None,
+                                               nms_threshold=None,
+                                               class_agnostic=False):
+        """
+        for easy prediction, using tensorrt as inference engine instead
+        :param image: image can be string path or numpy array
+        :param input_buffers:
+        :param output_buffers:
+        :param bindings:
+        :param stream:
+        :param engine:
+        :param tensorrt_engine_context: running context of deserialized tensorrt engine
+        :param aug_pipeline: image pre-processing like flip, normalization
+        :param classification_threshold: higher->higher precision, lower->higher recall
+        :param nms_threshold:
+        :param class_agnostic:
+        """
+        assert isinstance(image, str) or isinstance(image, numpy.ndarray)
+        if isinstance(image, str):
+            image = cv2.imread(image, cv2.IMREAD_UNCHANGED)
+            assert image is not None, 'image is None, confirm that the path is valid!'
+
+        sample = Sample()
+        sample['image'] = image
+        sample = aug_pipeline(sample)
+        data_batch = sample['image']
+        data_batch = data_batch[None]
+        data_batch = data_batch.transpose([0, 3, 1, 2])
+        image_width = data_batch.shape[3]
+        image_height = data_batch.shape[2]
+        input_buffers[0].host = data_batch.astype(dtype=numpy.float32, order='C')
+
+        [cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in input_buffers]
+        tensorrt_engine_context.execute_async(batch_size=1, bindings=bindings, stream_handle=stream.handle)
+        [cuda.memcpy_dtoh_async(out.host, out.device, stream) for out in output_buffers]
+        stream.synchronize()
+
+        output_shapes = []
+        for binding in engine:
+            if not engine.binding_is_input(binding):
+                output_shapes.append([engine.max_batch_size] + list(engine.get_binding_shape(binding)))
+        outputs = [out.host for out in output_buffers]
+        outputs = [numpy.squeeze(output.reshape(shape), axis=(0, 1)) for output, shape in zip(outputs, output_shapes)]
+        predicted_classification = torch.from_numpy(outputs[0]).cuda()
+        predicted_regression = torch.from_numpy(outputs[1]).cuda()
+
+        if len(self._head_indexes_to_feature_map_sizes) == 0:  # in self.forward(), self._head_indexes_to_feature_map_sizes is filled dynamically. but we have to compute manually
+            for i, stride in enumerate(self._point_strides):
+                loop = int(math.log2(stride))
+                map_height = image_height
+                map_width = image_width
+                for l in range(loop):
+                    map_height = int((map_height + 1) / 2)
+                    map_width = int((map_width + 1) / 2)
+                self._head_indexes_to_feature_map_sizes[i] = (map_height, map_width)
 
         all_point_coordinates_list = self.generate_point_coordinates(self._head_indexes_to_feature_map_sizes)
         expanded_regression_ranges_list = [all_point_coordinates_list[i].new_tensor(self._regression_ranges[i])[None].expand_as(all_point_coordinates_list[i])

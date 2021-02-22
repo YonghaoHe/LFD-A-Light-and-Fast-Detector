@@ -6,9 +6,9 @@
 In this repo, we release a new One-Stage Anchor-Free Detector called **LFD**. The new LFD completely surpasses the previous 
 **[LFFD](https://github.com/YonghaoHe/LFFD-A-Light-and-Fast-Face-Detector-for-Edge-Devices)** in most aspects. We are trying
 to make object detection easier, explainable and more applicable. With LFD, you are able to train and deploy a desired model 
-without all the bells and whistles.
+without all the bells and whistles. Eventually, we hope LFD can be as popular as YOLO series for the industrial community in the future.
 
-### 1.1 Highlights
+### 1.1 New Features
 Compared to LFFD, LFD has the following features:
 * implemented with PyTorch, which is friendly for most people
 * support multi-class rather than single-class
@@ -17,8 +17,8 @@ Compared to LFFD, LFD has the following features:
 * the performance of LFD has been proved in more real-world applications
 * train from scratch on your own datasets, create your desired models with satisfactory model size and inference latency
 
-### 1.2 Sneak Peek
-Before dive into the code, we present some performance results on several datasets in the beginning, 
+### 1.2 Performance Highlights
+Before dive into the code, we present some performance results on two datasets in the beginning, 
 including precision and inference latency.
 
 #### Dataset 1: WIDERFACE (Single-class)
@@ -27,16 +27,16 @@ including precision and inference latency.
 Model Version|Easy Set|Medium Set|Hard Set
 ------|--------|----------|--------
 **[v2](https://github.com/YonghaoHe/LFFD-A-Light-and-Fast-Face-Detector-for-Edge-Devices/tree/master/face_detection)**|0.875     |0.863       |0.754
-**WIDERFACE-L**|0.882 |0.886 |0.857
-**WIDERFACE-M**|0.872 |0.879 |0.848
-**WIDERFACE-S**|0.- |0.- |0.-
-**WIDERFACE-XS**|0.865 |0.875 |0.832
+**WIDERFACE-L**|0.887 |0.896 |0.863
+**WIDERFACE-M**|0.874 |0.888 |0.855
+**WIDERFACE-S**|0.873 |0.885 |0.849
+**WIDERFACE-XS**|0.866 |0.877 |0.839
 
 > * for fairy comparison, WIDERFACE-L/M/S/XS have the similar detection range with v2, namely [4, 320] vs [10, 320], but WIDERFACE-L/M/S/XS have 
 different network structures.
 > * great improvement on Hard Set
 
-##### Inference latency on different resolutions and GPUs
+##### Inference latency
 
 **Platform: RTX 2080Ti, CUDA 10.2, CUDNN 8.0.4, TensorRT 7.2.2.3**
 
@@ -47,8 +47,8 @@ Model Version|640×480|1280×720|1920×1080|3840×2160
 **v2**|2.12ms(472.04FPS)|5.02ms(199.10FPS)|10.80ms(92.63FPS)|42.41ms(23.58FPS)
 **WIDERFACE-L**|2.67ms(374.19FPS)|6.31ms(158.38FPS)|13.51ms(74.04FPS)|94.61ms(10.57FPS)
 **WIDERFACE-M**|2.47ms(404.23FPS)|5.70ms(175.38FPS)|12.28ms(81.43FPS)|87.90ms(11.38FPS)
-**WIDERFACE-S**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
-**WIDERFACE-XS**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
+**WIDERFACE-S**|1.82ms(548.42FPS)|3.57ms(280.00FPS)|7.35ms(136.02FPS)|27.93ms(35.81FPS)
+**WIDERFACE-XS**|1.58ms(633.06FPS)|3.03ms(330.36FPS)|6.14ms(163.00FPS)|23.26ms(43.00FPS)
 
 > the results of v2 is directly get from [LFFD](https://github.com/YonghaoHe/LFFD-A-Light-and-Fast-Face-Detector-for-Edge-Devices/tree/master/face_detection),
 the Platform condition is slightly different from here.
@@ -59,12 +59,12 @@ Model Version|640×480|1280×720|1920×1080|3840×2160
 -------------|-------|--------|---------|---------
 **WIDERFACE-L**|1.68ms(594.12FPS)|3.69ms(270.78FPS)|7.66ms(130.51FPS)|28.65ms(34.90FPS)
 **WIDERFACE-M**|1.61ms(622.42FPS)|3.51ms(285.13FPS)|7.31ms(136.79FPS)|27.32ms(36.60FPS)
-**WIDERFACE-S**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
-**WIDERFACE-XS**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
+**WIDERFACE-S**|1.26ms(793.97FPS)|2.39ms(418.68FPS)|4.88ms(205.09FPS)|18.46ms(54.18FPS)
+**WIDERFACE-XS**|1.23ms(813.01FPS)|2.18ms(459.17FPS)|4.57ms(218.62FPS)|17.35ms(57.65FPS)
 
 > It can be observed that FP16 mode is evidently faster than FP32 mode. So in deployment, FP16 is highly recommended if possible.
 
-#### Dataset 2: TT100K (Multi-class)
+#### Dataset 2: TT100K (Multi-class----45 classes)
 ##### Precision&Recall on test set of [TT100K[1]](http://cg.cs.tsinghua.edu.cn/traffic-sign/)
 
 Model Version|Precision|Recall
@@ -76,8 +76,9 @@ Model Version|Precision|Recall
 > We use only train split (6105 images) for model training, and test our models on test split (3071 images). In [1], authors extended the training set: `Classes with
 between 100 and 1000 instances in the training set were augmented to give them 1000 instances`. But the augmented data is not released. That means we use much less
 data than [1] used for training. However, as you can see, our models can still achieve better performance.
+Precision&Recall results of [1] can be found in it's released code folder: `code/results/report_xxxx.txt`.
 
-##### Inference latency on different resolutions and GPUs
+##### Inference latency
 
 **Platform: RTX 2080Ti, CUDA 10.2, CUDNN 8.0.4, TensorRT 7.2.2.3**
 
@@ -97,7 +98,7 @@ Model Version|1280×720|1920×1080|3840×2160
 
 ## 2. Get Started
 
-### 2.1 Install Procedure
+### 2.1 Install
 
 **Prerequirements**  
 * python = 3.6
@@ -108,7 +109,7 @@ Model Version|1280×720|1920×1080|3840×2160
 * numpy = 1.16
 * pycocotools = 2.0.1
 
-> All above versions are employed, newer versions may work as well.
+> All above versions are tested, newer versions may work as well.
 
 **Build Internal Libs**
 
@@ -148,10 +149,6 @@ Until now, the repo is ready for use. By the way, we do not install the repo to 
 ### 2.3 Train
 
 ### 2.4 Deploy
-
-## 3. Advanced Guide
-
-## 4. Q&A
 
 ## Acknowledgement
 * very much thankful for [PyTorch](https://pytorch.org/) framework.

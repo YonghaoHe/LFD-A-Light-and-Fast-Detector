@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-# author: Yonghao He
-# description:
-import sys
+
 import shutil
 import os
 import time
@@ -23,7 +21,7 @@ assert torch.cuda.is_available(), 'GPU training supported only!'
 
 memo = 'WIDERFACE XS' \
        'Head: share, path merge, with GN' \
-       'CE as classification loss, loss weight is set to 1.0' \
+       'FL as classification loss, loss weight is set to 1.0' \
        'IoULoss as regression loss, distance_to_bbox_mode is set to sigmoid, loss weight is set to 1.0'
 
 # all config parameters will be stored in config_dict
@@ -57,7 +55,7 @@ def prepare_common_settings():
     set_cudnn_backend(config_dict['cudnn_benchmark'])
 
     # GPU list
-    config_dict['gpu_list'] = [1, 2, 3]
+    config_dict['gpu_list'] = [0, 1, 2, 3]
     assert isinstance(config_dict['gpu_list'], list)
 
     # display interval in iterations
@@ -70,7 +68,6 @@ def prepare_common_settings():
     config_dict['val_interval'] = 0
 
 
-
 '''
 build model ----------------------------------------------------------------------------------------------
 '''
@@ -80,7 +77,10 @@ def prepare_model():
     # input image channels: BGR--3, gray--1
     config_dict['num_input_channels'] = 3
 
-    classification_loss = CrossEntropyLoss(
+    classification_loss = FocalLoss(
+        use_sigmoid=True,
+        gamma=2.0,
+        alpha=0.25,
         reduction='mean',
         loss_weight=1.0
     )
@@ -158,7 +158,6 @@ def prepare_model():
     config_dict['evaluator'] = None
 
 
-
 '''
 prepare data loader -----------------------------------------------------------------------------------------
 '''
@@ -188,7 +187,6 @@ def prepare_data_pipeline():
     train_region_sampler = RandomBBoxCropRegionSampler(crop_size=480,
                                                        resize_range=(0.5, 1.5),
                                                        resize_prob=0.5)
-
     config_dict['train_data_loader'] = DataLoader(dataset=train_dataset,
                                                   dataset_sampler=train_dataset_sampler,
                                                   region_sampler=train_region_sampler,

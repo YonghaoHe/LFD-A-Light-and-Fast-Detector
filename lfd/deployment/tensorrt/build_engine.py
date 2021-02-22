@@ -5,8 +5,8 @@ import numpy
 import pycuda.driver as cuda
 import pycuda.autoinit
 import tensorrt
-__all__ = ['MB', 'GB', 'build_tensorrt_engine']
 
+__all__ = ['MB', 'GB', 'build_tensorrt_engine']
 
 EXPLICIT_BATCH = 1 << (int)(tensorrt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
 
@@ -150,4 +150,3 @@ def build_tensorrt_engine(onnx_file_path,
 
     print('Engine built successfully!')
     return True
-

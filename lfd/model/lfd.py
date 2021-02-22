@@ -372,7 +372,7 @@ class LFD(nn.Module):
 
     def get_results(self, predict_outputs, *args):
         """
-        for evaluation
+        for online evaluation
         :param predict_outputs:
         :param args:
         :return:

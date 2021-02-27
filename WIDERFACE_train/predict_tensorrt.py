@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 # predict using tensorrt as inference engine
+
+# In this script, we provide you a demo only.
+# In this demo, we build engines that accepts fixed input shape (tensorrt supports dynamic shape, and we will implement it later)
+# If you want to deploy in the product, you should make some modifications, like rewrite the post-processing, in order to make it more efficient
+
 import torch
 import onnx
 import os
@@ -8,33 +13,33 @@ from lfd.data_pipeline.augmentation import *
 from lfd.deployment.tensorrt.inference import allocate_buffers
 from lfd.deployment.tensorrt.build_engine import GB, build_tensorrt_engine
 import tensorrt
-
 tensorrt.init_libnvinfer_plugins(None, '')
 import cv2
 
-# set the target model script
-from final_WIDERFACE_LFD_XS_work_dir_20210210_115210.WIDERFACE_LFD_XS import config_dict, prepare_model
+# set the target model script ------------------------------------------------------------------------
+from WIDERFACE_LFD_XS_work_dir_20210210_115210.WIDERFACE_LFD_XS import config_dict, prepare_model
 
 prepare_model()
 
-# set the model weight file
-param_file_path = './final_WIDERFACE_LFD_XS_work_dir_20210210_115210/epoch_1000.pth'
+# set the model weight file ------------------------------------------------------------------------
+param_file_path = './WIDERFACE_LFD_XS_work_dir_20210210_115210/epoch_1000.pth'
 
 load_checkpoint(config_dict['model'], load_path=param_file_path, strict=True)
 
-# set the image path to be tested
+# set the image path to be tested ------------------------------------------------------------------------
 image_path = './test_images/image1.jpg'
 image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
 
-# generate engine
+# generate engine ------------------------------------------------------------------------
 engine_folder = './tensorrt_engine_folder'
 if not os.path.exists(engine_folder):
     os.makedirs(engine_folder)
 
+# setting for engine building
 input_shapes = [[1, 3, image.shape[0], image.shape[1]]]
 input_names = ['input_data']
 output_names = ['classification_output', 'regression_output']
-precision_mode = 'fp16'
+precision_mode = 'fp32'
 max_workspace_size = GB(6)
 min_timing_iterations = 2
 avg_timing_iterations = 2
@@ -42,6 +47,7 @@ avg_timing_iterations = 2
 onnx_file_path = os.path.join(engine_folder, param_file_path.split('/')[-2] + '_' + param_file_path.split('/')[-1].split('.')[0] + '_' + precision_mode + '.onnx')
 engine_file_path = os.path.join(engine_folder, param_file_path.split('/')[-2] + '_' + param_file_path.split('/')[-1].split('.')[0] + '_' + precision_mode + '.engine')
 
+# if the engine exists, skip building process
 if not os.path.exists(engine_file_path):
     # generate onnx file
     input_tensors = [torch.rand(input_shape) for input_shape in input_shapes]

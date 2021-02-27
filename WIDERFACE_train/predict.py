@@ -11,7 +11,7 @@ from WIDERFACE_LFD_M_work_dir_20210116_153509.WIDERFACE_LFD_M import config_dict
 prepare_model()
 
 # set the model weight file
-param_file_path = './WIDERFACE_LFD_M_work_dir_20210116_153509/epoch_1000.pth'
+param_file_path = './_WIDERFACE_LFD_M_work_dir_20210116_153509/epoch_1000.pth'
 
 load_checkpoint(config_dict['model'], load_path=param_file_path, strict=True)
 

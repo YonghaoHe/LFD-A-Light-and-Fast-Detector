@@ -8,22 +8,21 @@ from lfd.data_pipeline.augmentation import *
 from lfd.deployment.tensorrt.inference import allocate_buffers
 from lfd.deployment.tensorrt.build_engine import GB, build_tensorrt_engine
 import tensorrt
-
 tensorrt.init_libnvinfer_plugins(None, '')
 import cv2
 
 # set the target model script
-from TT100K_LFD_L_work_dir_20210126_163013.TT100K_LFD_L import config_dict, prepare_model
+from TT100K_LFD_S_work_dir_20210127_170801.TT100K_LFD_S import config_dict, prepare_model
 
 prepare_model()
 
 # set the model weight file
-param_file_path = './TT100K_LFD_L_work_dir_20210126_163013/epoch_500.pth'
+param_file_path = './TT100K_LFD_S_work_dir_20210127_170801/epoch_500.pth'
 
 load_checkpoint(config_dict['model'], load_path=param_file_path, strict=True)
 
 # set the image path to be tested
-image_path = '/home/yonghaohe/datasets/TT100K/data/test/138.jpg'
+image_path = './test_images/73.jpg'
 image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
 
 # generate engine
@@ -34,7 +33,7 @@ if not os.path.exists(engine_folder):
 input_shapes = [[1, 3, image.shape[0], image.shape[1]]]
 input_names = ['input_data']
 output_names = ['classification_output', 'regression_output']
-precision_mode = 'fp16'
+precision_mode = 'fp32'
 max_workspace_size = GB(6)
 min_timing_iterations = 2
 avg_timing_iterations = 2
@@ -94,7 +93,7 @@ results = config_dict['model'].predict_for_single_image_with_tensorrt(image,
 
 for bbox in results:
     print(bbox)
-    cv2.rectangle(image, (int(bbox[2]), int(bbox[3])), (int(bbox[2] + bbox[4]), int(bbox[3] + bbox[5])), (0, 255, 0), 1)
+    cv2.rectangle(image, (int(bbox[2]), int(bbox[3])), (int(bbox[2] + bbox[4]), int(bbox[3] + bbox[5])), (0, 255, 0), 2)
 print('%d traffic signs are detected!' % len(results))
 cv2.imshow('im', image)
 cv2.waitKey()

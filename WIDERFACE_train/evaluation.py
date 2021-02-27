@@ -52,7 +52,7 @@ def run_SIO_evaluation():
         import config_dict, prepare_model
     # prepare model --------------------------------------------------------
     prepare_model()
-    param_file_path = './WIDERFACE_LFD_XS_work_dir_20210120_125717/epoch_1000.pth'
+    param_file_path = './_WIDERFACE_LFD_XS_work_dir_20210120_125717/epoch_1000.pth'
     load_checkpoint(config_dict['model'], load_path=param_file_path, strict=True)
 
     val_image_root = '/home/yonghaohe/datasets/WIDER_FACE/WIDER_val/images'

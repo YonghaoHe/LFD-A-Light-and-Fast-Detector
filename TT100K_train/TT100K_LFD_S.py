@@ -56,11 +56,11 @@ def prepare_common_settings():
     set_cudnn_backend(config_dict['cudnn_benchmark'])
 
     # GPU list
-    config_dict['gpu_list'] = [0]
+    config_dict['gpu_list'] = [0,1,2,3]
     assert isinstance(config_dict['gpu_list'], list)
 
     # display interval in iterations
-    config_dict['display_interval'] = 10
+    config_dict['display_interval'] = 50
 
     # checkpoint save interval in epochs
     config_dict['save_interval'] = 100

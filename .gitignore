@@ -10,8 +10,6 @@
 /build/
 
 /local_WIDERFACE_train/
-
+/local_TT100K_train/
 /local_COCO_train/
 /COCO_train/
-
-/local_TT100K_train/

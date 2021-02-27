@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-
 import sys
-sys.path.append('..')
 import shutil
 import os
 import time

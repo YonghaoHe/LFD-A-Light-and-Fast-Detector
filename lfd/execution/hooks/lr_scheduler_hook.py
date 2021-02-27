@@ -59,11 +59,10 @@ class LrSchedulerHook(Hook):
             self._resume_init_flag = True
 
     def before_run(self, executor):
-        # NOTE: when resuming from a checkpoint, if 'initial_lr' is not saved,
-        # it will be set according to the optimizer params
+
         for group in executor.config_dict['optimizer'].param_groups:
             group.setdefault('initial_lr', group['lr'])
-        self._base_lr = [group['initial_lr'] for group in executor.config_dict['optimizer'].param_groups]
+        self._base_lr = [group['lr'] for group in executor.config_dict['optimizer'].param_groups]
 
     def before_train_epoch(self, executor):
         if self._by_epoch:

@@ -55,7 +55,7 @@ def prepare_common_settings():
     set_cudnn_backend(config_dict['cudnn_benchmark'])
 
     # GPU list
-    config_dict['gpu_list'] = [0]
+    config_dict['gpu_list'] = [0,1,2,3]
     assert isinstance(config_dict['gpu_list'], list)
 
     # display interval in iterations

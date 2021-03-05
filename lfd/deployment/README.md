@@ -6,3 +6,7 @@ Currently, we support NVIDIA TensorRT deployment.
 * tensorrt = 7.2.2.3 (corresponding cudnn = 8.0)
 
 > GroupNorm is supported in TensorRT 7.2.X and newer. If you use GN, make sure the version of TensorRT meets the requirement.
+
+### Future Plan
+* ARM deployment
+* [HUAWEI Ascend](https://ascend.huawei.com/zh/#/) deployment

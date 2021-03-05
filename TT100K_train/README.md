@@ -1,7 +1,7 @@
 ### LFD for TT100K
 
 #### Background
-For multi-class detection, we apply LFD to [TT100K[1]](http://cg.cs.tsinghua.edu.cn/traffic-sign/) dataset. In this dataset, there are 45 types of traffic signs used for training.
+For multi-class detection, we apply LFD to [TT100K[1]](http://cg.cs.tsinghua.edu.cn/traffic-sign/) dataset. In this dataset, there are 45 types of traffic signs used for training,
 which is suitable for verify the effectiveness of LFD. We design 2 types of network structures with different sizes of weights and inference latency:
 * LFD_L — Large
 * LFD_S — Small
@@ -11,7 +11,7 @@ These structures can be adopted as templates for your own tasks, or inspire you 
 #### Performance
 We use only train split (6105 images) for model training, and test our models on test split (3071 images). In [1], authors extended the training set: `Classes with
 between 100 and 1000 instances in the training set were augmented to give them 1000 instances`. But the augmented data is not released. That means we use much less
-data than [1] used for training. However, as you can see below, our models can still achieve better performance.
+data than [1] for training. However, as you can see below, our models can still achieve better performance.
 
 We use the evaluation code release by [1], precision and recall are computed.
 
@@ -25,24 +25,21 @@ Model Version|Precision|Recall
 
 ##### Inference latency
 
----
-**Platform: RTX 2080Ti, CUDA 10.2, CUDNN 7.6.0.5, TensorRT 7.0.0.11**
+**Platform: RTX 2080Ti, CUDA 10.2, CUDNN 8.0.4, TensorRT 7.2.2.3**
 
 * batchsize=1, weight precision mode=FP32
 
 Model Version|1280×720|1920×1080|3840×2160
 -------------|-------|-------|--------
-**LFD_L**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
-**LFD_S**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
----
-**Platform: RTX 2080Ti, CUDA 10.2, CUDNN 7.6.0.5, TensorRT 7.0.0.11**
+**LFD_L**|9.87ms(101.35FPS)|21.56ms(46.38FPS)|166.66ms(6.00FPS)
+**LFD_S**|4.31ms(232.27FPS)|8.96ms(111.64FPS)|34.01ms(29.36FPS)
 
-* batchsize=1, weight precision mode=FP32
+* batchsize=1, weight precision mode=FP16
 
 Model Version|1280×720|1920×1080|3840×2160
 -------------|-------|-------|--------
-**LFD_L**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
-**LFD_S**|-ms(-FPS)|-ms(-FPS)|-ms(-FPS)
+**LFD_L**|6.28ms(159.27FPS)|13.09ms(76.38FPS)|49.79ms(20.09FPS)
+**LFD_S**|3.03ms(329.68FPS)|6.27ms(159.54FPS)|23.41ms(42.72FPS)
 
 
 #### Usage of Files
@@ -66,11 +63,15 @@ Model Version|1280×720|1920×1080|3840×2160
  
 * [TT100K_LFD_L.py](./TT100K_LFD_L.py) | [TT100K_LFD_S.py](./TT100K_LFD_S.py)
   
-  Configure all parameters and run the script for training.
+  Configure all parameters and **directly run the script for training**.
 
 * [predict.py](./predict.py)
 
   Make a quick prediction of trained models and qualitative results are shown.
+ 
+* [predict_tensorrt.py](./predict_tensorrt.py)
+
+  Make a quick prediction using tensorrt as inference engine.
 
 * [official_eval.py](./official_eval.py)
   
@@ -78,15 +79,40 @@ Model Version|1280×720|1920×1080|3840×2160
 
 * [evaluation.py](./evaluation.py)
 
-  Generate result json files and evaluate the results using Presion and Recall metrics.
+  Generate result json files and evaluate the results using official evaluation rules.
   
+#### Get Started
+##### Quick Predict
+1. download the pre-trained models and put them in the current folder
+2. open the script `predict.py`, and make the following modifications:
+    * select the model and import ---- `from TT100K_LFD_S_work_dir_xxxxxxxx_xxxxxx.TT100K_LFD_S import config_dict, prepare_model`
+    * set the path of model weight ---- `param_file_path = './TT100K_LFD_S_work_dir_xxxxxxxx_xxxxxx/epoch_500.pth'`
+    * set the image path ---- `image_path = './test_images/73.jpg'` (we provide some test images in `./test_images`)
+    * set the params of thresholds ---- `classification_threshold=0.5, nms_threshold=0.1, class_agnostic=True`
+3. run the script
+
+##### Train with TT100K dataset
+1. download the packed dataset or prepare by yourself. Here, we briefly describe the steps, for more information, please refer to the [wiki]():
+    * write your own annotation parser for providing samples 
+    * pack data as memory-based or disk-based dataset according to your need
+2. select a off-the-shelf config script (currently, you have 2 choices----L/S), and directly run the script for training.
+An other choice is to write your own config script, including designing new structures. 
 
 #### Download
-We provide pre-trained weights of 2 models, feel free to use them to predict test images. We do not provide packed dataset, you can use the relevant 
-scripts to generate the disk-based dataset.
+#### pre-trained models
+
+We provide pre-trained weights of 2 models, as well as training logs, feel free to use them to predict test images. 
 
 * LFD_L pre-trained weight: [Baidu YunPan](),  [MS OneDrive]()
 * LFD_S pre-trained weight: [Baidu YunPan](),  [MS OneDrive]()
+
+When successfully download the folder, you just put them in the current fold, namely `./TT100K_train`. It may look like this:
+`./TT100K_train/TT100K_LFD_L_work_dir_xxxxxxxx_xxxxxx`.
+
+#### packed TT100K dataset
+Download here: [Baidu YunPan](),  [MS OneDrive]()
+
+After you download the packed dataset, you can put it to `./TT100K_pack/train.pkl`.
 
 #### Reference
 [1] Zhe Zhu, Dun Liang, Songhai Zhang, Xiaolei Huang, Baoli Li, Shimin Hu, 'Traffic-Sign Detection and Classification in the Wild', CVPR 2016

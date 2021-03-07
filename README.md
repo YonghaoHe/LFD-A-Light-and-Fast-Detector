@@ -110,7 +110,7 @@ Model Version|1280×720|1920×1080|3840×2160
 * pycuda = 2020.1
 * tensorrt = 7.2.2.3 (corresponding cudnn = 8.0)
 
-> All above versions are tested, newer versions may work as well but not fully tested.
+> All above versions are tested, new                                                                   er versions may work as well but not fully tested.
 
 **Build Internal Libs**
 

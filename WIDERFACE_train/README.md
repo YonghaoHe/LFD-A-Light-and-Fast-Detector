@@ -1,6 +1,6 @@
-### LFD for WIDERFACE
+# LFD for WIDERFACE
 
-#### Background
+## Background
 For single-class detection, we apply LFD to [WIDERFACE](http://shuoyang1213.me/WIDERFACE/) dataset which is large and diverse.
 We design 4 types of network structures with different sizes of weights and inference latency:
 * LFD_L — Large
@@ -11,7 +11,7 @@ We design 4 types of network structures with different sizes of weights and infe
 These structures can be adopted as templates for your own tasks, or inspire you to create new structures.
 
 
-#### Performance
+## Performance
 ##### Accuracy on val under the **SIO** schema proposed in [LFFD](https://arxiv.org/abs/1904.10633)
 
 Model Version|Easy Set|Medium Set|Hard Set
@@ -54,7 +54,7 @@ Model Version|640×480|1280×720|1920×1080|3840×2160
 
 > It can be observed that FP16 mode is evidently faster than FP32 mode. So in deployment, FP16 is highly recommended if possible.
 
-#### Usage of Files
+## Usage of Files
 * [generate_neg_images.py](./generate_neg_images.py) 
     
   Generate pure neg images based on train set of WIDERFACE. The crop rule is simple, just read the code for details.
@@ -86,7 +86,7 @@ Model Version|640×480|1280×720|1920×1080|3840×2160
   Generate files of SIO results for WIDERFACE standard evaluation. You have to use [matlab code](http://shuoyang1213.me/WIDERFACE/support/eval_script/eval_tools.zip)
   to get final evaluation metrics. 
 
-#### Get Started
+## Get Started
 ##### Quick Predict
 1. download the pre-trained models and put them in the current folder
 2. open the script `predict.py`, and make the following modifications:
@@ -97,25 +97,25 @@ Model Version|640×480|1280×720|1920×1080|3840×2160
 3. run the script
 
 ##### Train with WIDERFACE dataset
-1. download the packed dataset or prepare by yourself. Here, we briefly describe the steps, for more information, please refer to the [wiki]():
+1. download the packed dataset or prepare by yourself. Here, we briefly describe the steps, for more information, please refer to the [wiki](https://github.com/YonghaoHe/LFD-A-Light-and-Fast-Detector/wiki/data-pipeline):
     * write your own annotation parser for providing samples 
     * pack data as memory-based or disk-based dataset according to your need
 2. select a off-the-shelf config script (currently, you have 4 choices----L/M/S/XS), and directly run the script for training.
 An other choice is to write your own config script, including designing new structures. 
 
-#### Download 
+## Download 
 #### pre-trained models
 We provide pre-trained weights of 4 models, as well as training logs for your reference, feel free to try. 
 
-* LFD_L pre-trained weight: [Baidu YunPan](),  [MS OneDrive]()
-* LFD_M pre-trained weight: [Baidu YunPan](),  [MS OneDrive]()
-* LFD_S pre-trained weight: [Baidu YunPan](),  [MS OneDrive]()
-* LFD_XS pre-trained weight: [Baidu YunPan](),  [MS OneDrive]()
+* LFD_L pre-trained weight: [Baidu YunPan](https://pan.baidu.com/s/1sgh4ldOVtlTMRjDwInRSWg) Pwd: r1kx,  [MS OneDrive](https://1drv.ms/u/s!Av9h0YMgxdaSkDf8S6IkrE2NMFk4?e=ATsIfX)
+* LFD_M pre-trained weight: [Baidu YunPan](https://pan.baidu.com/s/1Mpg1RxuWVvvYggb8IIpmkA) Pwd: ayft,  [MS OneDrive](https://1drv.ms/u/s!Av9h0YMgxdaSkDhK2NGbUl23ou-z?e=2jiAco)
+* LFD_S pre-trained weight: [Baidu YunPan](https://pan.baidu.com/s/1jUlQPCqE_h2Dljxvor29MQ) Pwd: jt7i,  [MS OneDrive](https://1drv.ms/u/s!Av9h0YMgxdaSkDmJIz1YD1aj9rIB?e=Y9BG8P)
+* LFD_XS pre-trained weight: [Baidu YunPan](https://pan.baidu.com/s/1zT0KjvyUPYrRbzohCThCVQ) Pwd: ru3e,  [MS OneDrive](https://1drv.ms/u/s!Av9h0YMgxdaSkDpHPWMyXYjwBJqs?e=nffKAe)
 
 When successfully download the folder, you just put them in the current fold, namely ``./WIDERFACE_train``. It may look like this:
 ``./WIDERFACE_train/WIDERFACE_LFD_L_work_dir_xxxxxxxx_xxxxxx``.
 
 #### packed WIDERFACE dataset
-Download here: [Baidu YunPan](),  [MS OneDrive]()
+Download here: [Baidu YunPan](https://pan.baidu.com/s/1DpCVb0FVgtvYMXghtPsU9A) Pwd: hnx5,  [MS OneDrive](https://1drv.ms/u/s!Av9h0YMgxdaSkDs6cy6tz7xXEydi?e=ggNPsa)
 
 After you download the packed dataset, you can put it to `./WIDERFACE_pack/widerface_train.pkl`.

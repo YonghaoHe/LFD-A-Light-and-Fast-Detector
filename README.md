@@ -1,4 +1,5 @@
 ## Update History
+* `2021.03.09` LFD now is formally released!!! Any questions and problems are welcome.
 
 ## 1. Introduction
 In this repo, we release a new One-Stage Anchor-Free Detector named **LFD**. LFD completely surpasses the previous 

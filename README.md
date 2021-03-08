@@ -9,17 +9,17 @@ without all the bells and whistles. Eventually, we hope LFD can be as popular as
 ### 1.1 New Features
 Compared to LFFD, LFD has the following features:
 * implemented using PyTorch, which is friendly for most guys (LFFD is implemented using MXNet)
-* support multi-class detection rather than single-class detection in LFFD
+* support multi-class detection rather than single-class detection (LFFD is only for single-class)
 * higher precision and lower inference latency
 * we maintain a [wiki](https://github.com/YonghaoHe/LFD-A-Light-and-Fast-Detector/wiki) (highly recommended) for you to fully understand LFD and master the code
-* the performance of LFD has been proved in more real-world applications
+* the performance of LFD has been proved in many real-world applications
 * create your desired models with satisfactory model size and inference latency, train from scratch on your own datasets, 
 
 ### 1.2 Performance Highlights
 Before dive into the code, we present some performance results on two datasets, 
 including precision and inference latency.
 
-#### Dataset 1: WIDERFACE (Single-class)
+#### Dataset 1: WIDERFACE (single-class)
 ##### Accuracy on val under the **SIO** evaluation schema proposed in [LFFD](https://arxiv.org/abs/1904.10633)
 
 Model Version|Easy Set|Medium Set|Hard Set
@@ -63,7 +63,7 @@ Model Version|640×480|1280×720|1920×1080|3840×2160
 
 > It can be observed that FP16 mode is evidently faster than FP32 mode. So in deployment, FP16 is highly recommended if possible.
 
-#### Dataset 2: TT100K (Multi-class----45 classes)
+#### Dataset 2: TT100K (multi-class----45 classes)
 ##### Precision&Recall on test set of [TT100K[1]](http://cg.cs.tsinghua.edu.cn/traffic-sign/)
 
 Model Version|Precision|Recall
@@ -157,5 +157,6 @@ Besides, we describe the structure of code in [wiki](https://github.com/YonghaoH
 * we learn a lot and reuse some basic code from [mmdetection](https://github.com/open-mmlab/mmdetection), thanks for the great work.
 * thanks for some third-party libs like [albumentations](https://github.com/albumentations-team/albumentations), [turbojpeg](https://libjpeg-turbo.org/).
 
-     
+## Citation
+If you find the repo is useful, please cite the repo website directly.
      

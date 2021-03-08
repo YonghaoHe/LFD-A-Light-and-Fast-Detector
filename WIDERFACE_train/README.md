@@ -75,7 +75,7 @@ Model Version|640×480|1280×720|1920×1080|3840×2160
 
 * [predict.py](./predict.py)
 
-  Make a quick prediction of trained models and qualitative results are shown.
+  Make a quick prediction of trained models and show qualitative results.
 
 * [predict_tensorrt.py](./predict_tensorrt.py)
 

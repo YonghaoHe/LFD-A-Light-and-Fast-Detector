@@ -1,8 +1,8 @@
 # LFD for TT100K
 
 ## Background
-For multi-class detection, we apply LFD to [TT100K[1]](http://cg.cs.tsinghua.edu.cn/traffic-sign/) dataset. In this dataset, there are 45 types of traffic signs used for training,
-which is suitable for verify the effectiveness of LFD. We design 2 types of network structures with different sizes of weights and inference latency:
+For multi-class detection, we apply LFD to [TT100K[1]](http://cg.cs.tsinghua.edu.cn/traffic-sign/) dataset. In this dataset, there are 45 types of traffic signs used for training. 
+We design 2 types of network structures with different sizes of weights and inference latency:
 * LFD_L — Large
 * LFD_S — Small
 
@@ -67,7 +67,7 @@ Model Version|1280×720|1920×1080|3840×2160
 
 * [predict.py](./predict.py)
 
-  Make a quick prediction of trained models and qualitative results are shown.
+  Make a quick prediction of trained models and show qualitative results.
  
 * [predict_tensorrt.py](./predict_tensorrt.py)
 
@@ -79,7 +79,7 @@ Model Version|1280×720|1920×1080|3840×2160
 
 * [evaluation.py](./evaluation.py)
 
-  Generate result json files and evaluate the results using official evaluation rules.
+  Generate result json files and evaluate using official evaluation rules.
   
 ## Get Started
 ##### Quick Predict

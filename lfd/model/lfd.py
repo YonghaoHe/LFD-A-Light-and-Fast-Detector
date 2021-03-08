@@ -46,6 +46,7 @@ class LFD(nn.Module):
         self._regression_ranges = regression_ranges
         self._range_assign_mode = range_assign_mode
         if self._range_assign_mode in ['shorter', 'sqrt']:
+            assert type(regression_loss_func).__name__ in ['IoULoss', 'GIoULoss', 'DIoULoss', 'CIoULoss'], 'when range assign mode is "shorter" or "sqrt", regression loss should be IOU losses!'
             assert distance_to_bbox_mode == 'exp', 'when range assign mode is "shorter" or "sqrt", distance_to_bbox_mode must be "exp"!'
 
         self._gray_range_factors = (min(gray_range_factors), max(gray_range_factors))

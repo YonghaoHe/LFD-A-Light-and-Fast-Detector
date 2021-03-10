@@ -146,6 +146,10 @@ The last step is to add the repo root to PYTHONPATH. You have two choices:
 Until now, the repo is ready for use. By the way, we do not install the repo to the default python libs location 
 (like /python3.x/site-packages/) for easily modification and development.
 
+**Docker Installation**
+
+please check [here](https://github.com/YonghaoHe/LFD-A-Light-and-Fast-Detector/issues/1) for more details, thanks to [@ashuezy](https://github.com/ashuezy).
+
 ### 2.2 Play with the code
 We present the details of how to use the code in two specific tasks.
 * face detection on WIDERFACE [README.md](./WIDERFACE_train/README.md)

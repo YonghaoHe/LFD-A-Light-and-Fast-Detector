@@ -44,7 +44,7 @@ class LFDHead(nn.Module):
                  merge_path_flag=False,
                  ):
         super(LFDHead, self).__init__()
-        assert classification_loss_type in ['BCEWithLogitsLoss', 'FocalLoss', 'CrossEntropyLoss']
+        assert classification_loss_type in ['BCEWithLogitsLoss', 'FocalLoss', 'CrossEntropyLoss', 'QualityFocalLoss']
         assert regression_loss_type in ['SmoothL1Loss', 'MSELoss', 'IoULoss', 'GIoULoss', 'DIoULoss', 'CIoULoss']
         assert conv_kernel_size in [1, 3]
 

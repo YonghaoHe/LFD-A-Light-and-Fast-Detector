@@ -57,7 +57,7 @@ class LFD(nn.Module):
         # currently, classification losses support BCEWithLogitsLoss, CrossEntropyLoss, FocalLoss, QualityFocalLoss(TBD)
         # we find that FocalLoss is not suitable for train-from-scratch
         if classification_loss_func is not None:
-            assert type(classification_loss_func).__name__ in ['BCEWithLogitsLoss', 'FocalLoss', 'CrossEntropyLoss']
+            assert type(classification_loss_func).__name__ in ['BCEWithLogitsLoss', 'FocalLoss', 'CrossEntropyLoss', 'QualityFocalLoss']
         self._classification_loss_func = classification_loss_func
 
         # currently, regression losses support SmoothL1Loss, MSELoss, IoULoss, GIoULoss, DIoULoss, CIoULoss
@@ -311,7 +311,7 @@ class LFD(nn.Module):
         flatten_classification_target_tensor = flatten_classification_target_tensor.to(flatten_predict_classification_tensor.device)
         flatten_regression_target_tensor = flatten_regression_target_tensor.to(flatten_predict_regression_tensor.device)
 
-        # ignore gray positions (in the future, we can only ignore gray classes within a position)
+        # ignore gray positions
         min_scores = flatten_classification_target_tensor.min(dim=-1)[0]
         green_indexes = torch.where(min_scores >= 0)[0]
 
@@ -323,18 +323,23 @@ class LFD(nn.Module):
         max_scores, max_score_indexes = flatten_classification_target_tensor.max(dim=-1)
         pos_indexes = torch.where(max_scores >= 0.001)[0]
         # targets for FocalLoss/CrossEntropyLoss are label indexes
-        if type(self._classification_loss_func).__name__ in ['FocalLoss', 'CrossEntropyLoss']:
+        if type(self._classification_loss_func).__name__ in ['FocalLoss', 'CrossEntropyLoss', 'QualityFocalLoss']:
             # assign background label
-            max_score_indexes = max_score_indexes * (max_scores >= 0.001) + self._num_classes * (max_scores < 0.001)
-            flatten_classification_target_tensor = max_score_indexes
-
-        flatten_predict_regression_tensor = flatten_predict_regression_tensor[pos_indexes]
-        flatten_regression_target_tensor = flatten_regression_target_tensor[pos_indexes]
-
-        # get classification loss
-        classification_loss = self._classification_loss_func(flatten_predict_classification_tensor, flatten_classification_target_tensor, avg_factor=pos_indexes.nelement() + batch_size)
+            flatten_classification_target_label_tensor = max_score_indexes * (max_scores >= 0.001) + self._num_classes * (max_scores < 0.001)
+            flatten_classification_target_score_tensor = max_scores
+            if type(self._classification_loss_func).__name__ == 'QualityFocalLoss':
+                # get classification loss
+                classification_loss = self._classification_loss_func(flatten_predict_classification_tensor, [flatten_classification_target_label_tensor, flatten_classification_target_score_tensor], avg_factor=pos_indexes.nelement() + batch_size)
+            else:
+                # get classification loss
+                classification_loss = self._classification_loss_func(flatten_predict_classification_tensor, flatten_classification_target_label_tensor, avg_factor=pos_indexes.nelement() + batch_size)
+        else:  # BCEWithLogitsLoss
+            # get classification loss
+            classification_loss = self._classification_loss_func(flatten_predict_classification_tensor, flatten_classification_target_tensor, avg_factor=pos_indexes.nelement() + batch_size)
 
         # get regression loss
+        flatten_predict_regression_tensor = flatten_predict_regression_tensor[pos_indexes]
+        flatten_regression_target_tensor = flatten_regression_target_tensor[pos_indexes]
         if pos_indexes.nelement() > 0:
             if self._regression_loss_type == 'independent':
                 regression_loss = self._regression_loss_func(flatten_predict_regression_tensor, flatten_regression_target_tensor)

@@ -342,7 +342,7 @@ class LFD(nn.Module):
         flatten_regression_target_tensor = flatten_regression_target_tensor[pos_indexes]
         if pos_indexes.nelement() > 0:
             if self._regression_loss_type == 'independent':
-                regression_loss = self._regression_loss_func(flatten_predict_regression_tensor, flatten_regression_target_tensor)
+                regression_loss = self._regression_loss_func(flatten_predict_regression_tensor, flatten_regression_target_tensor, avg_factor=pos_indexes.nelement())
             else:
                 flatten_all_point_coordinates = (torch.cat(all_point_coordinates_list, dim=0)).repeat(batch_size, 1)
                 flatten_all_point_coordinates = flatten_all_point_coordinates.to(flatten_predict_regression_tensor.device)

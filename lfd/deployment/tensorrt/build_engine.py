@@ -42,7 +42,7 @@ class INT8Calibrator(tensorrt.IInt8EntropyCalibrator2):
         self._current_index = 0
 
         # Allocate enough memory for a whole batch.
-        self._device_input = cuda.mem_alloc(self.data[0].nbytes * self.batch_size)
+        self._device_input = cuda.mem_alloc(self._data[0].nbytes * self._batch_size)
 
     def get_batch_size(self):
         return self._batch_size

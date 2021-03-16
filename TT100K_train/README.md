@@ -119,3 +119,14 @@ When successfully download the folder, you just put them in the current fold, na
 
 ## Reference
 [1] Zhe Zhu, Dun Liang, Songhai Zhang, Xiaolei Huang, Baoli Li, Shimin Hu, 'Traffic-Sign Detection and Classification in the Wild', CVPR 2016
+
+## Qualitative Results
+We should some qualitative results produced by LFD_L with score threshold 0.5 and nms threshold 0.1.
+
+![image1](https://github.com/YonghaoHe/wiki-images/blob/main/LFD-wiki/TT100K_test_results/73_result_compressed.jpg)
+
+![image2](https://github.com/YonghaoHe/wiki-images/blob/main/LFD-wiki/TT100K_test_results/66589_result_compressed.jpg)
+
+![image3](https://github.com/YonghaoHe/wiki-images/blob/main/LFD-wiki/TT100K_test_results/74668_result_compressed.jpg)
+
+![image4](https://github.com/YonghaoHe/wiki-images/blob/main/LFD-wiki/TT100K_test_results/94063_result_compressed.jpg)

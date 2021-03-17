@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import os
 import numpy
 from lfd.deployment.tensorrt.build_engine import GB, INT8Calibrator
 from lfd.deployment.tensorrt.inference_latency_evaluation import inference_latency_evaluation
@@ -16,11 +16,15 @@ max_workspace_size = GB(6)
 min_timing_iterations = 2
 avg_timing_iterations = 2
 timing_loops = 1000
+engine_root = './tensorrt_engine_folder'
+
+if not os.path.exists(engine_root):
+    os.makedirs(engine_root)
 
 if precision_mode == 'int8':
     # construct int8 calibrator
     data_batch = numpy.random.rand(128, 3, 512, 512).astype(numpy.float32)  # use a fake batch
-    int8_calibrator = INT8Calibrator(data_batch, './tensorrt_engine_folder/int8_calibration.cache', batch_size=8)
+    int8_calibrator = INT8Calibrator(data_batch, os.path.join(engine_root, 'int8_calibration.cache'), batch_size=8)
 
 else:
     int8_calibrator = None
@@ -37,3 +41,6 @@ inference_latency_evaluation(
     int8_calibrator=int8_calibrator,
     timing_loops=timing_loops
 )
+
+if os.path.exists(os.path.join(engine_root, 'int8_calibration.cache')):
+    os.remove(os.path.join(engine_root, 'int8_calibration.cache'))

@@ -41,6 +41,14 @@ Model Version|1280×720|1920×1080|3840×2160
 **LFD_L**|6.28ms(159.27FPS)|13.09ms(76.38FPS)|49.79ms(20.09FPS)
 **LFD_S**|3.03ms(329.68FPS)|6.27ms(159.54FPS)|23.41ms(42.72FPS)
 
+* batchsize=1, weight precision mode=INT8
+
+Model Version|1280×720|1920×1080|3840×2160
+-------------|-------|-------|--------
+**LFD_L**|5.96ms(167.89FPS)|12.68ms(78.86FPS)|-ms(-FPS)
+**LFD_S**|2.90ms(345.33FPS)|5.89ms(169.86FPS)|-ms(-FPS)
+
+> CAUTION: `-` means results are not available due to out of memory while calibrating
 
 ## Usage of Files
 * [generate_neg_images.py](./generate_neg_images.py) 

@@ -1,4 +1,5 @@
 ## Update History
+* `2021.03.16` INT8 inference is updated. Check [timing_inference_latency.py](./WIDERFACE_train/timing_inference_latency.py) and [predict_tensorrt.py](./WIDERFACE_train/predict_tensorrt.py) for reference.
 * `2021.03.09` LFD now is formally released!!! Any questions and problems are welcome.
 
 ## 1. Introduction
@@ -64,6 +65,17 @@ Model Version|640×480|1280×720|1920×1080|3840×2160
 
 > It can be observed that FP16 mode is evidently faster than FP32 mode. So in deployment, FP16 is highly recommended if possible.
 
+* batchsize=1, weight precision mode=INT8
+
+Model Version|640×480|1280×720|1920×1080|3840×2160
+-------------|-------|--------|---------|---------
+**WIDERFACE-L**|1.50ms(667.95FPS)|3.24ms(308.43FPS)|6.83ms(146.41FPS)|-ms(-FPS)
+**WIDERFACE-M**|1.45ms(689.00FPS)|3.15ms(317.60FPS)|6.61ms(151.20FPS)|-ms(-FPS)
+**WIDERFACE-S**|1.17ms(855.29FPS)|2.14ms(466.86FPS)|4.40ms(227.18FPS)|-ms(-FPS)
+**WIDERFACE-XS**|1.09ms(920.91FPS)|2.03ms(493.54FPS)|4.11ms(243.15FPS)|-ms(-FPS)
+
+> CAUTION: `-` means results are not available due to out of memory while calibrating
+
 #### Dataset 2: TT100K (multi-class----45 classes)
 ##### Precision&Recall on test set of [TT100K[1]](http://cg.cs.tsinghua.edu.cn/traffic-sign/)
 
@@ -95,6 +107,15 @@ Model Version|1280×720|1920×1080|3840×2160
 -------------|-------|-------|--------
 **LFD_L**|6.28ms(159.27FPS)|13.09ms(76.38FPS)|49.79ms(20.09FPS)
 **LFD_S**|3.03ms(329.68FPS)|6.27ms(159.54FPS)|23.41ms(42.72FPS)
+
+* batchsize=1, weight precision mode=INT8
+
+Model Version|1280×720|1920×1080|3840×2160
+-------------|-------|-------|--------
+**LFD_L**|5.96ms(167.89FPS)|12.68ms(78.86FPS)|-ms(-FPS)
+**LFD_S**|2.90ms(345.33FPS)|5.89ms(169.86FPS)|-ms(-FPS)
+
+> CAUTION: `-` means results are not available due to out of memory while calibrating
 
 ## 2. Get Started
 

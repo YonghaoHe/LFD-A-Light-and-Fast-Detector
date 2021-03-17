@@ -54,6 +54,17 @@ Model Version|640×480|1280×720|1920×1080|3840×2160
 
 > It can be observed that FP16 mode is evidently faster than FP32 mode. So in deployment, FP16 is highly recommended if possible.
 
+* batchsize=1, weight precision mode=INT8
+
+Model Version|640×480|1280×720|1920×1080|3840×2160
+-------------|-------|--------|---------|---------
+**WIDERFACE-L**|1.50ms(667.95FPS)|3.24ms(308.43FPS)|6.83ms(146.41FPS)|-ms(-FPS)
+**WIDERFACE-M**|1.45ms(689.00FPS)|3.15ms(317.60FPS)|6.61ms(151.20FPS)|-ms(-FPS)
+**WIDERFACE-S**|1.17ms(855.29FPS)|2.14ms(466.86FPS)|4.40ms(227.18FPS)|-ms(-FPS)
+**WIDERFACE-XS**|1.09ms(920.91FPS)|2.03ms(493.54FPS)|4.11ms(243.15FPS)|-ms(-FPS)
+
+> CAUTION: `-` means results are not available due to out of memory while calibrating
+
 ##Usage of Files
 * [generate_neg_images.py](./generate_neg_images.py) 
     

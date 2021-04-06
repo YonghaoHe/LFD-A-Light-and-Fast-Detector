@@ -35,7 +35,7 @@ class FPN(nn.Module):
             assert norm_cfg is not None
         if norm_cfg is not None:
             assert 'type' in norm_cfg
-            assert norm_cfg['type'] in ['BN', 'GN']
+            assert norm_cfg['type'] in ['BatchNorm2d', 'GroupNorm']
             if norm_cfg['type'] == 'GN':
                 assert 'num_groups' in norm_cfg
 

@@ -29,6 +29,7 @@ class LFD(nn.Module):
                  classification_loss_func=None,
                  regression_loss_func=None,
                  distance_to_bbox_mode='exp',
+                 enable_regression_weight=False,
                  classification_threshold=0.05,
                  nms_threshold=0.5,
                  pre_nms_bbox_limit=1000,
@@ -72,6 +73,7 @@ class LFD(nn.Module):
         self._regression_loss_func = regression_loss_func
         assert distance_to_bbox_mode in ['exp', 'sigmoid']
         self._distance_to_bbox_mode = distance_to_bbox_mode
+        self._enable_regression_weight = enable_regression_weight
 
         self._classification_threshold = classification_threshold
         self._nms_cfg = dict(type='nms', iou_thr=nms_threshold)
@@ -340,9 +342,13 @@ class LFD(nn.Module):
         # get regression loss
         flatten_predict_regression_tensor = flatten_predict_regression_tensor[pos_indexes]
         flatten_regression_target_tensor = flatten_regression_target_tensor[pos_indexes]
+        regression_weight = max_scores[pos_indexes]
         if pos_indexes.nelement() > 0:
             if self._regression_loss_type == 'independent':
-                regression_loss = self._regression_loss_func(flatten_predict_regression_tensor, flatten_regression_target_tensor, avg_factor=pos_indexes.nelement())
+                regression_loss = self._regression_loss_func(flatten_predict_regression_tensor,
+                                                             flatten_regression_target_tensor,
+                                                             avg_factor=regression_weight.sum() if self._enable_regression_weight else pos_indexes.nelement(),
+                                                             weight=regression_weight if self._enable_regression_weight else None)
             else:
                 flatten_all_point_coordinates = (torch.cat(all_point_coordinates_list, dim=0)).repeat(batch_size, 1)
                 flatten_all_point_coordinates = flatten_all_point_coordinates.to(flatten_predict_regression_tensor.device)
@@ -365,7 +371,10 @@ class LFD(nn.Module):
                 else:
                     raise ValueError('Unknown distance_to_bbox mode!')
 
-                regression_loss = self._regression_loss_func(flatten_xyxy_predict_regression_tensor, flatten_xyxy_regression_target_tensor, avg_factor=pos_indexes.nelement())
+                regression_loss = self._regression_loss_func(flatten_xyxy_predict_regression_tensor, 
+                                                             flatten_xyxy_regression_target_tensor,
+                                                             avg_factor=regression_weight.sum() if self._enable_regression_weight else pos_indexes.nelement(),
+                                                             weight=regression_weight if self._enable_regression_weight else None)
 
         else:
             regression_loss = flatten_predict_regression_tensor.sum()

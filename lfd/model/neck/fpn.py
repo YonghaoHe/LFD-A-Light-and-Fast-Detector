@@ -57,7 +57,7 @@ class FPN(nn.Module):
             lateral = []
             if self._norm_on_lateral:
                 lateral.append(nn.Conv2d(self._num_input_channels_list[i], self._num_output_channels, kernel_size=1, stride=1, padding=0, bias=False))
-                lateral.append(nn.BatchNorm2d(num_features=self._num_output_channels) if self._norm_cfg['type'] == 'BN' else
+                lateral.append(nn.BatchNorm2d(num_features=self._num_output_channels) if self._norm_cfg['type'] == 'BatchNorm2d' else
                                nn.GroupNorm(num_groups=self._norm_cfg['num_groups'], num_channels=self._num_output_channels))
             else:
                 lateral.append(nn.Conv2d(self._num_input_channels_list[i], self._num_output_channels, kernel_size=1, stride=1, padding=0, bias=True))

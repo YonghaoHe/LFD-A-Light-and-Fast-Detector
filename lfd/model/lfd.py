@@ -29,6 +29,7 @@ class LFD(nn.Module):
                  classification_loss_func=None,
                  regression_loss_func=None,
                  distance_to_bbox_mode='exp',
+                 enable_classification_weight=False,
                  enable_regression_weight=False,
                  classification_threshold=0.05,
                  nms_threshold=0.5,
@@ -73,6 +74,7 @@ class LFD(nn.Module):
         self._regression_loss_func = regression_loss_func
         assert distance_to_bbox_mode in ['exp', 'sigmoid']
         self._distance_to_bbox_mode = distance_to_bbox_mode
+        self._enable_classification_weight = enable_classification_weight
         self._enable_regression_weight = enable_regression_weight
 
         self._classification_threshold = classification_threshold
@@ -324,6 +326,7 @@ class LFD(nn.Module):
 
         max_scores, max_score_indexes = flatten_classification_target_tensor.max(dim=-1)
         pos_indexes = torch.where(max_scores >= 0.001)[0]
+        weight = max_scores[pos_indexes]
         # targets for FocalLoss/CrossEntropyLoss are label indexes
         if type(self._classification_loss_func).__name__ in ['FocalLoss', 'CrossEntropyLoss', 'QualityFocalLoss']:
             # assign background label
@@ -331,24 +334,33 @@ class LFD(nn.Module):
             flatten_classification_target_score_tensor = max_scores
             if type(self._classification_loss_func).__name__ == 'QualityFocalLoss':
                 # get classification loss
-                classification_loss = self._classification_loss_func(flatten_predict_classification_tensor, [flatten_classification_target_label_tensor, flatten_classification_target_score_tensor], avg_factor=pos_indexes.nelement() + batch_size)
+                classification_loss = self._classification_loss_func(flatten_predict_classification_tensor,
+                                                                     [flatten_classification_target_label_tensor, flatten_classification_target_score_tensor],
+                                                                     avg_factor=weight.sum() if self._enable_classification_weight else pos_indexes.nelement() + 1,
+                                                                     )
             else:
                 # get classification loss
-                classification_loss = self._classification_loss_func(flatten_predict_classification_tensor, flatten_classification_target_label_tensor, avg_factor=pos_indexes.nelement() + batch_size)
+                classification_loss = self._classification_loss_func(flatten_predict_classification_tensor,
+                                                                     flatten_classification_target_label_tensor,
+                                                                     avg_factor=weight.sum() if self._enable_classification_weight else pos_indexes.nelement() + 1,
+                                                                     )
         else:  # BCEWithLogitsLoss
             # get classification loss
-            classification_loss = self._classification_loss_func(flatten_predict_classification_tensor, flatten_classification_target_tensor, avg_factor=pos_indexes.nelement() + batch_size)
+            classification_loss = self._classification_loss_func(flatten_predict_classification_tensor,
+                                                                 flatten_classification_target_tensor,
+                                                                 avg_factor=weight.sum() if self._enable_classification_weight else pos_indexes.nelement() + 1,
+                                                                 )
 
         # get regression loss
         flatten_predict_regression_tensor = flatten_predict_regression_tensor[pos_indexes]
         flatten_regression_target_tensor = flatten_regression_target_tensor[pos_indexes]
-        regression_weight = max_scores[pos_indexes]
+
         if pos_indexes.nelement() > 0:
             if self._regression_loss_type == 'independent':
                 regression_loss = self._regression_loss_func(flatten_predict_regression_tensor,
                                                              flatten_regression_target_tensor,
-                                                             avg_factor=regression_weight.sum() if self._enable_regression_weight else pos_indexes.nelement(),
-                                                             weight=regression_weight if self._enable_regression_weight else None)
+                                                             avg_factor=weight.sum() if self._enable_regression_weight else pos_indexes.nelement(),
+                                                             weight=weight if self._enable_regression_weight else None)
             else:
                 flatten_all_point_coordinates = (torch.cat(all_point_coordinates_list, dim=0)).repeat(batch_size, 1)
                 flatten_all_point_coordinates = flatten_all_point_coordinates.to(flatten_predict_regression_tensor.device)
@@ -371,10 +383,10 @@ class LFD(nn.Module):
                 else:
                     raise ValueError('Unknown distance_to_bbox mode!')
 
-                regression_loss = self._regression_loss_func(flatten_xyxy_predict_regression_tensor, 
+                regression_loss = self._regression_loss_func(flatten_xyxy_predict_regression_tensor,
                                                              flatten_xyxy_regression_target_tensor,
-                                                             avg_factor=regression_weight.sum() if self._enable_regression_weight else pos_indexes.nelement(),
-                                                             weight=regression_weight if self._enable_regression_weight else None)
+                                                             avg_factor=weight.sum() if self._enable_regression_weight else pos_indexes.nelement(),
+                                                             weight=weight if self._enable_regression_weight else None)
 
         else:
             regression_loss = flatten_predict_regression_tensor.sum()

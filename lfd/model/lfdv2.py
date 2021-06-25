@@ -463,6 +463,7 @@ class LFDv2(nn.Module):
             pos_points = pos_points.to(flatten_predict_regression_tensor.device)
             pos_flatten_regression_target_tensor = flatten_regression_target_tensor[pos_indexes]
 
+            pos_flatten_predict_regression_tensor = pos_flatten_predict_regression_tensor.float().exp()
             pos_decoded_bbox_preds = self.distance2bbox(pos_points, pos_flatten_predict_regression_tensor)
             pos_decoded_bbox_targets = self.distance2bbox(pos_points, pos_flatten_regression_target_tensor)
 

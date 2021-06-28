@@ -1,4 +1,5 @@
 ## Update History
+* `2021.06.25` Some new [experiments](https://github.com/YonghaoHe/LFD-A-Light-and-Fast-Detector/wiki/Experiments) are added for your reference.
 * `2021.03.30` We maintain an [Experiments wiki page](https://github.com/YonghaoHe/LFD-A-Light-and-Fast-Detector/wiki/Experiments) to show ablation studies for your reference. Maybe these experiments are valuable for you to make proper
 decisions.
 * `2021.03.16` INT8 inference is updated. Check [timing_inference_latency.py](./WIDERFACE_train/timing_inference_latency.py) and [predict_tensorrt.py](./WIDERFACE_train/predict_tensorrt.py) for reference.

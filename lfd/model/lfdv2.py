@@ -363,13 +363,29 @@ class LFDv2(nn.Module):
         if self._regression_loss_type == 'independent':
             regression_delta = regression_delta / concat_regression_ranges[..., 1, None]  # P x N x 4
 
-        head_selection_condition = (concat_regression_ranges[..., 0] <= assign_measure) & (assign_measure <= concat_regression_ranges[..., 1])
+        # gray scale
+        #  linear reduction
+        left_relaxation_multiplier = (assign_measure - concat_gray_ranges[..., 0]) / (concat_regression_ranges[..., 0] - concat_gray_ranges[..., 0]).clamp(min=0.01)
+        left_indicator = (concat_gray_ranges[..., 0] <= assign_measure) & (assign_measure < concat_regression_ranges[..., 0])
 
-        green_condition = head_selection_condition & hit_condition
+        in_measure_range_indicator = (concat_regression_ranges[..., 0] <= assign_measure) & (assign_measure <= concat_regression_ranges[..., 1])
 
-        gray_condition1 = (concat_gray_ranges[..., 0] <= assign_measure) & (assign_measure < concat_regression_ranges[..., 0])
-        gray_condition2 = (concat_regression_ranges[..., 1] < assign_measure) & (assign_measure <= concat_gray_ranges[..., 1])
-        gray_condition = (gray_condition1 | gray_condition2) & hit_condition
+        right_relaxation_multiplier = (concat_gray_ranges[..., 1] - assign_measure) / (concat_gray_ranges[..., 1] - concat_regression_ranges[..., 1]).clamp(min=0.01)
+        right_indicator = (concat_regression_ranges[..., 1] < assign_measure) & (assign_measure <= concat_gray_ranges[..., 1])
+
+        relaxation_score = left_relaxation_multiplier * left_indicator + in_measure_range_indicator + right_relaxation_multiplier * right_indicator
+
+        point_scores = point_scores * relaxation_score
+
+        positive_condition = point_scores > 0
+
+        # head_selection_condition = (concat_regression_ranges[..., 0] <= assign_measure) & (assign_measure <= concat_regression_ranges[..., 1])
+        #
+        # green_condition = head_selection_condition & hit_condition
+        #
+        # gray_condition1 = (concat_gray_ranges[..., 0] <= assign_measure) & (assign_measure < concat_regression_ranges[..., 0])
+        # gray_condition2 = (concat_regression_ranges[..., 1] < assign_measure) & (assign_measure <= concat_gray_ranges[..., 1])
+        # gray_condition = (gray_condition1 | gray_condition2) & hit_condition
 
         # rank scores in ascending order for each point
         # why rank here: for a certain class, multiple objects may cover the same point, putting the largest score at the end will make
@@ -381,22 +397,21 @@ class LFDv2(nn.Module):
 
         # reranking
         sorted_gt_labels = gt_labels[intermediate_indexes, sorted_indexes]
-        sorted_green_condition = green_condition[intermediate_indexes, sorted_indexes]
-        sorted_gray_condition = gray_condition[intermediate_indexes, sorted_indexes]
+        sorted_positive_condition = positive_condition[intermediate_indexes, sorted_indexes]
 
         # set green positions
-        index1, index2 = torch.where(sorted_green_condition)
-        green_label_index = sorted_gt_labels[index1, index2]
-        classification_targets[index1, green_label_index] = sorted_point_scores[index1, index2]
+        index1, index2 = torch.where(sorted_positive_condition)
+        positive_label_index = sorted_gt_labels[index1, index2]
+        classification_targets[index1, positive_label_index] = sorted_point_scores[index1, index2]
 
         # set gray positions
-        index3, index4 = torch.where(sorted_gray_condition)
-        gray_label_index = sorted_gt_labels[index3, index4]
-        classification_targets[index3, gray_label_index] = -1
+        # index3, index4 = torch.where(sorted_gray_condition)
+        # gray_label_index = sorted_gt_labels[index3, index4]
+        # classification_targets[index3, gray_label_index] = -1
 
         # for each point, select the regression target with the highest score (affected by green and gray conditions)
-        filtered_sorted_point_scores = sorted_point_scores * (sorted_green_condition & ~sorted_gray_condition)
-        _, select_indexes = filtered_sorted_point_scores.max(dim=1)
+        # filtered_sorted_point_scores = sorted_point_scores * (sorted_green_condition & ~sorted_gray_condition)
+        select_indexes = sorted_point_scores.max(dim=1)[1]
         sorted_regression_delta = regression_delta[intermediate_indexes, sorted_indexes]
         regression_targets = sorted_regression_delta[range(num_points), select_indexes]
 

@@ -291,7 +291,7 @@ class LFDResNet(nn.Module):
 
         self._init_weights()
         if self._init_with_weight_file is not None:
-            assert isinstance(self.init_with_weight_file, str), 'weight file must be the string path of the file!'
+            assert isinstance(self._init_with_weight_file, str), 'weight file must be the string path of the file!'
             self._init_with_pretrained_weights()
 
         # obtain out channels based on out indices; obtain strides for each output map
@@ -313,11 +313,22 @@ class LFDResNet(nn.Module):
 
     def _init_with_pretrained_weights(self):
 
-        assert os.path.isfile(self.init_with_weight_file), 'pretrained weight file [{}] does not exist!'.format(self.init_with_weight_file)
+        assert os.path.isfile(self._init_with_weight_file), 'pretrained weight file [{}] does not exist!'.format(self.init_with_weight_file)
 
-        weights = torch.load(self.init_with_weight_file)
+        weights = torch.load(self._init_with_weight_file)
 
-        missing_keys, unexpected_keys = self.load_state_dict(weights['state_dict'], strict=False)
+        # rename keys of 'state_dict' (pth from pre-train may contain 'backbone')
+        new_state_dict = dict()
+        for k in weights['state_dict']:
+            v = weights['state_dict'][k]
+            k_splits = k.split('.')
+            if 'backbone' in k_splits[0]:
+                del k_splits[0]
+
+            new_k = '.'.join(k_splits)
+            new_state_dict[new_k] = v
+
+        missing_keys, unexpected_keys = self.load_state_dict(new_state_dict, strict=False)
         if missing_keys:
             print('[WARNING: ResNet pretrained weights load] missing keys:')
             for i, key in enumerate(missing_keys):

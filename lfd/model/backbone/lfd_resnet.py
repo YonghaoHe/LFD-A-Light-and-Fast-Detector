@@ -313,7 +313,7 @@ class LFDResNet(nn.Module):
 
     def _init_with_pretrained_weights(self):
 
-        assert os.path.isfile(self._init_with_weight_file), 'pretrained weight file [{}] does not exist!'.format(self.init_with_weight_file)
+        assert os.path.isfile(self._init_with_weight_file), 'pretrained weight file [{}] does not exist!'.format(self._init_with_weight_file)
 
         weights = torch.load(self._init_with_weight_file)
 

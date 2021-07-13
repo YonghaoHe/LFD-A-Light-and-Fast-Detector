@@ -15,6 +15,7 @@ class DataLoader(object):
                  dataset_sampler,
                  region_sampler,
                  augmentation_pipeline=None,
+                 im_bgr2rgb=False,
                  num_workers=1):
         """
 
@@ -22,6 +23,7 @@ class DataLoader(object):
         :param dataset_sampler:
         :param region_sampler:
         :param augmentation_pipeline:
+        :param im_bgr2rgb:
         :param num_workers:
 
         """
@@ -32,6 +34,7 @@ class DataLoader(object):
         self._batch_size = dataset_sampler.get_batch_size()
         self._region_sampler = region_sampler
         self._augmentation_pipeline = augmentation_pipeline
+        self._im_bgr2rgb = im_bgr2rgb
         self._num_workers = num_workers
 
         self._index_queue = queue.Queue()
@@ -112,6 +115,8 @@ class DataLoader(object):
                 # image decode ----------------------------------------------------------
                 image = self._decode_image(sample)
                 assert image is not None
+                if self._im_bgr2rgb:
+                    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 sample_temp['image'] = image
 
                 # region sampling -----------------------------------------------------------

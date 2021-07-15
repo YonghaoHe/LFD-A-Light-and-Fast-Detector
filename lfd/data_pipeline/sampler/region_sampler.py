@@ -5,7 +5,11 @@ import random
 import numpy
 import cv2
 
-__all__ = ['BaseRegionSampler', 'TypicalCOCOTrainingRegionSampler', 'RandomBBoxCropRegionSampler', 'RandomBBoxCropWithRangeSelectionRegionSampler', 'IdleRegionSampler']
+__all__ = ['BaseRegionSampler',
+           'TypicalCOCOTrainingRegionSampler',
+           'RandomBBoxCropRegionSampler',
+           'RandomBBoxCropWithRangeSelectionRegionSampler',
+           'IdleRegionSampler']
 
 
 class BaseRegionSampler(object):

@@ -47,7 +47,7 @@ def prepare_common_settings():
     sys.excepthook = customize_exception_hook(os.path.join(config_dict['work_dir'], 'exception_log_' + config_dict['timestamp'] + '.log'))
 
     # training epochs
-    config_dict['training_epochs'] = 200
+    config_dict['training_epochs'] = 100
 
     # reproductive
     config_dict['seed'] = 666
@@ -64,7 +64,7 @@ def prepare_common_settings():
     config_dict['display_interval'] = 5
 
     # checkpoint save interval in epochs
-    config_dict['save_interval'] = 100
+    config_dict['save_interval'] = 50
 
 
 '''
@@ -194,26 +194,26 @@ def prepare_data_pipeline():
                                                   num_workers=config_dict['num_train_workers'])
 
     # construct val data_loader
-    config_dict['val_dataset_path'] = './debug_data/train.pkl'
-    val_dataset = Dataset(load_path=config_dict['val_dataset_path'])
-    val_dataset_sampler = RandomDatasetSampler(dataset=val_dataset,
-                                               batch_size=config_dict['batch_size'],
-                                               shuffle=False,
-                                               ignore_last=False)
-    val_region_sampler = IdleRegionSampler()
-    config_dict['val_data_loader'] = DataLoader(dataset=val_dataset,
-                                                dataset_sampler=val_dataset_sampler,
-                                                region_sampler=val_region_sampler,
-                                                augmentation_pipeline=val_pipeline,
-                                                num_workers=config_dict['num_val_workers'])
+    # config_dict['val_dataset_path'] = './debug_data/train.pkl'
+    # val_dataset = Dataset(load_path=config_dict['val_dataset_path'])
+    # val_dataset_sampler = RandomDatasetSampler(dataset=val_dataset,
+    #                                            batch_size=config_dict['batch_size'],
+    #                                            shuffle=False,
+    #                                            ignore_last=False)
+    # val_region_sampler = IdleRegionSampler()
+    # config_dict['val_data_loader'] = DataLoader(dataset=val_dataset,
+    #                                             dataset_sampler=val_dataset_sampler,
+    #                                             region_sampler=val_region_sampler,
+    #                                             augmentation_pipeline=val_pipeline,
+    #                                             num_workers=config_dict['num_val_workers'])
 
     # evaluator
     # the evaluator should match the dataset
     # validation interval in epochs
-    config_dict['val_interval'] = 1
-    config_dict['val_annotation_path'] = './debug_data/annotations/instances_train2017.json'
-    config_dict['evaluator'] = COCOEvaluator(annotation_path=config_dict['val_annotation_path'],
-                                             label_indexes_to_category_ids=val_dataset.meta_info['label_indexes_to_category_ids'])
+    config_dict['val_interval'] = 0
+    # config_dict['val_annotation_path'] = './debug_data/annotations/instances_train2017.json'
+    config_dict['evaluator'] = None  # COCOEvaluator(annotation_path=config_dict['val_annotation_path'],
+                                             # label_indexes_to_category_ids=val_dataset.meta_info['label_indexes_to_category_ids'])
 
 '''
 learning rate and optimizer --------------------------------------------------------------------------------
@@ -233,7 +233,7 @@ def prepare_optimizer():
     config_dict['optimizer_grad_clip_cfg'] = dict(max_norm=10, norm_type=2, duration=5)
 
     # multi step lr scheduler is used here
-    config_dict['milestones'] = [100, 140, 180]
+    config_dict['milestones'] = [50, 70, 90]
     config_dict['gamma'] = 0.1
     assert max(config_dict['milestones']) < config_dict['training_epochs'], 'the max value in milestones should be less than total epochs!'
 

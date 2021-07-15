@@ -22,8 +22,9 @@ assert torch.cuda.is_available(), 'GPU training supported only!'
 
 memo = 'TL S' \
        'head: share, path merge, without GN' \
-       'QFL as classification loss, loss weight is set to 1.0' \
-       'IoULoss as regression loss, distance_to_bbox_mode is set to sigmoid, loss weight is set to 1.0'
+       'QFL as classification loss, loss weight is set to 2.0' \
+       'IoULoss as regression loss, distance_to_bbox_mode is set to sigmoid, loss weight is set to 1.0' \
+       'use pre-trained backbone'
 
 # all config parameters will be stored in config_dict
 config_dict = dict()
@@ -46,7 +47,7 @@ def prepare_common_settings():
     sys.excepthook = customize_exception_hook(os.path.join(config_dict['work_dir'], 'exception_log_' + config_dict['timestamp'] + '.log'))
 
     # training epochs
-    config_dict['training_epochs'] = 500
+    config_dict['training_epochs'] = 100
 
     # reproductive
     config_dict['seed'] = 666
@@ -56,14 +57,14 @@ def prepare_common_settings():
     set_cudnn_backend(config_dict['cudnn_benchmark'])
 
     # GPU list
-    config_dict['gpu_list'] = [0,1,2,3]
+    config_dict['gpu_list'] = [0]
     assert isinstance(config_dict['gpu_list'], list)
 
     # display interval in iterations
     config_dict['display_interval'] = 50
 
     # checkpoint save interval in epochs
-    config_dict['save_interval'] = 100
+    config_dict['save_interval'] = 50
 
     # validation interval in epochs
     config_dict['val_interval'] = 0
@@ -82,7 +83,7 @@ def prepare_model():
         use_sigmoid=True,
         beta=2.0,
         reduction='mean',
-        loss_weight=1.0
+        loss_weight=2.0
     )
 
     regression_loss = IoULoss(
@@ -131,7 +132,7 @@ def prepare_model():
         classification_loss_type=type(classification_loss).__name__,
         regression_loss_type=type(regression_loss).__name__
     )
-    config_dict['detection_scales'] = ((4, 32), (32, 64), (64, 128), (128, 256), (256, 512))
+    config_dict['detection_scales'] = ((0, 16), (16, 32), (32, 64), (64, 128), (128, 256))
     config_dict['model'] = LFD(
         backbone=lfd_backbone,
         neck=lfd_neck,
@@ -144,8 +145,8 @@ def prepare_model():
         classification_loss_func=classification_loss,
         regression_loss_func=regression_loss,
         distance_to_bbox_mode='sigmoid',
-        enable_regression_weight=True,
-        enable_classification_weight=True
+        enable_regression_weight=False,
+        enable_classification_weight=False
     )
 
     # init param weights file
@@ -187,7 +188,7 @@ def prepare_data_pipeline():
         ignore_last=False
     )
 
-    train_region_sampler = RandomBBoxCropRegionSampler(crop_size=512,
+    train_region_sampler = RandomBBoxCropRegionSampler(crop_size=640,
                                                        resize_range=(0.5, 1.5),
                                                        resize_prob=0.5)
 
@@ -230,7 +231,7 @@ def prepare_optimizer():
     config_dict['optimizer_grad_clip_cfg'] = dict(max_norm=10, norm_type=2, duration=5)
 
     # multi step lr scheduler is used here
-    config_dict['milestones'] = [200, 300, 400]
+    config_dict['milestones'] = [50, 70, 90]
     config_dict['gamma'] = 0.1
     assert max(config_dict['milestones']) < config_dict['training_epochs'], 'the max value in milestones should be less than total epochs!'
 

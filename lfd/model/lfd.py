@@ -546,7 +546,7 @@ class LFD(nn.Module):
 
         return classification_output_tensor, regression_output_tensor
 
-    def predict_for_single_image(self, image, aug_pipeline, classification_threshold=None, nms_threshold=None, class_agnostic=False):
+    def predict_for_single_image(self, image, aug_pipeline, classification_threshold=None, nms_threshold=None, class_agnostic=False, cuda_device_index=0):
         """
         for easy prediction
         :param image: image can be string path or numpy array
@@ -571,7 +571,7 @@ class LFD(nn.Module):
         image_width = data_batch.size(3)
         image_height = data_batch.size(2)
         data_batch = data_batch.cuda()
-        self.cuda()
+        self.cuda(cuda_device_index)
         self.eval()
 
         with torch.no_grad():

@@ -570,7 +570,7 @@ class LFD(nn.Module):
 
         image_width = data_batch.size(3)
         image_height = data_batch.size(2)
-        data_batch = data_batch.cuda()
+        data_batch = data_batch.cuda(cuda_device_index)
         self.cuda(cuda_device_index)
         self.eval()
 

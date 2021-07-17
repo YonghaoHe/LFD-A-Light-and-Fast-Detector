@@ -21,7 +21,7 @@ class LFD(nn.Module):
                  num_classes=80,
                  regression_ranges=((0, 64), (64, 128), (128, 256), (256, 512), (512, 1024)),
                  gray_range_factors=(0.9, 1.1),
-                 range_assign_mode='longer',  # determine how to assign bbox to which range
+                 range_assign_mode='dist',  # determine how to assign bbox to which range
                  point_strides=(8, 16, 32, 64, 128),
                  classification_loss_func=None,
                  regression_loss_func=None,
@@ -29,13 +29,11 @@ class LFD(nn.Module):
                  enable_classification_weight=False,
                  enable_regression_weight=False,
                  classification_threshold=0.05,
-                 nms_threshold=0.5,
-                 pre_nms_bbox_limit=1000,
-                 post_nms_bbox_limit=100,
+                 nms_threshold=0.4,
                  ):
         super(LFD, self).__init__()
         assert len(regression_ranges) == len(point_strides)
-        assert range_assign_mode in ['longer', 'shorter', 'sqrt', 'dist']
+        assert range_assign_mode in ['longer', 'shorter', 'dist']
         assert distance_to_bbox_mode in ['exp', 'sigmoid']
 
         self._backbone = backbone
@@ -44,9 +42,9 @@ class LFD(nn.Module):
         self._num_classes = num_classes
         self._regression_ranges = regression_ranges
         self._range_assign_mode = range_assign_mode
-        if self._range_assign_mode in ['shorter', 'sqrt']:
+        if self._range_assign_mode in ['shorter']:
             assert type(regression_loss_func).__name__ in ['IoULoss', 'GIoULoss', 'DIoULoss', 'CIoULoss'], 'when range assign mode is "shorter" or "sqrt", regression loss should be IOU losses!'
-            assert distance_to_bbox_mode == 'exp', 'when range assign mode is "shorter" or "sqrt", distance_to_bbox_mode must be "exp"!'
+            assert distance_to_bbox_mode == 'exp', 'when range assign mode is "shorter", distance_to_bbox_mode must be "exp"!'
 
         self._gray_range_factors = (min(gray_range_factors), max(gray_range_factors))
         self._gray_ranges = [(int(low * self._gray_range_factors[0]), int(up * self._gray_range_factors[1])) for (low, up) in self._regression_ranges]
@@ -76,8 +74,6 @@ class LFD(nn.Module):
 
         self._classification_threshold = classification_threshold
         self._nms_cfg = dict(type='nms', iou_thr=nms_threshold)
-        self._pre_nms_bbox_limit = pre_nms_bbox_limit
-        self._post_nms_bbox_limit = post_nms_bbox_limit
 
         self._head_indexes_to_feature_map_sizes = dict()
 
@@ -460,13 +456,13 @@ class LFD(nn.Module):
             temp_point_coordinates = all_point_coordinates_list[i].to(temp_predicted_regression.device)
             temp_expanded_regression_ranges = expanded_regression_ranges_list[i].to(temp_predicted_regression.device)
 
-            if 0 < self._pre_nms_bbox_limit < temp_predicted_classification.size(0):
-                temp_max_scores = temp_predicted_classification.max(dim=1)[0]
-                topk_indexes = temp_max_scores.topk(self._pre_nms_bbox_limit)[1]
-                temp_predicted_classification = temp_predicted_classification[topk_indexes]
-                temp_predicted_regression = temp_predicted_regression[topk_indexes]
-                temp_point_coordinates = temp_point_coordinates[topk_indexes]
-                temp_expanded_regression_ranges = temp_expanded_regression_ranges[topk_indexes]
+            # if 0 < self._pre_nms_bbox_limit < temp_predicted_classification.size(0):
+            #     temp_max_scores = temp_predicted_classification.max(dim=1)[0]
+            #     topk_indexes = temp_max_scores.topk(self._pre_nms_bbox_limit)[1]
+            #     temp_predicted_classification = temp_predicted_classification[topk_indexes]
+            #     temp_predicted_regression = temp_predicted_regression[topk_indexes]
+            #     temp_point_coordinates = temp_point_coordinates[topk_indexes]
+            #     temp_expanded_regression_ranges = temp_expanded_regression_ranges[topk_indexes]
 
             #  calculate bboxes' x1 y1 x2 y2
             if self._regression_loss_type == 'independent':
@@ -507,7 +503,6 @@ class LFD(nn.Module):
             multi_scores=predicted_classification_merge,
             score_thr=self._classification_threshold,
             nms_cfg=self._nms_cfg,
-            max_num=self._post_nms_bbox_limit,
             score_factors=None
         )
 

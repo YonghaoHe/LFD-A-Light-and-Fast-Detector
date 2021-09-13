@@ -1,6 +1,6 @@
 # LFD for WIDERFACE
 
-##Background
+## Background
 For single-class detection, we apply LFD to [WIDERFACE](http://shuoyang1213.me/WIDERFACE/) dataset which is large and diverse.
 We design 4 types of network structures with different sizes of weights and inference latency:
 * LFD_L — Large
@@ -11,8 +11,8 @@ We design 4 types of network structures with different sizes of weights and infe
 These structures can be adopted as templates for your own tasks, or inspire you to create new structures.
 
 
-##Performance
-#####Accuracy on val under the **SIO** schema proposed in [LFFD](https://arxiv.org/abs/1904.10633)
+## Performance
+##### Accuracy on val under the **SIO** schema proposed in [LFFD](https://arxiv.org/abs/1904.10633)
 
 Model Version|Easy Set|Medium Set|Hard Set
 ------|--------|----------|--------
@@ -26,7 +26,7 @@ Model Version|Easy Set|Medium Set|Hard Set
 different network structures.
 > * great improvement on Hard Set
 
-#####Inference latency
+##### Inference latency
 
 **Platform: RTX 2080Ti, CUDA 10.2, CUDNN 8.0.4, TensorRT 7.2.2.3**
 
@@ -65,7 +65,7 @@ Model Version|640×480|1280×720|1920×1080|3840×2160
 
 > CAUTION: `-` means results are not available due to out of memory while calibrating
 
-##Usage of Files
+## Usage of Files
 * [generate_neg_images.py](./generate_neg_images.py) 
     
   Generate pure neg images based on train set of WIDERFACE. The crop rule is simple, just read the code for details.
@@ -97,8 +97,8 @@ Model Version|640×480|1280×720|1920×1080|3840×2160
   Generate files of SIO results for WIDERFACE standard evaluation. You have to use [matlab code](http://shuoyang1213.me/WIDERFACE/support/eval_script/eval_tools.zip)
   to get final evaluation metrics. 
 
-##Get Started
-#####Quick Predict
+## Get Started
+##### Quick Predict
 1. download the pre-trained models and put them in the current folder
 2. open the script `predict.py`, and make the following modifications:
     * select the model and import ---- `from WIDERFACE_LFD_L_work_dir_xxxxxxxx_xxxxxx.WIDERFACE_LFD_L import config_dict, prepare_model`
@@ -107,15 +107,15 @@ Model Version|640×480|1280×720|1920×1080|3840×2160
     * set the params of thresholds ---- `classification_threshold=0.5, nms_threshold=0.3`
 3. run the script
 
-#####Train with WIDERFACE dataset
+##### Train with WIDERFACE dataset
 1. download the packed dataset or prepare by yourself. Here, we briefly describe the steps, for more information, please refer to the [wiki](https://github.com/YonghaoHe/LFD-A-Light-and-Fast-Detector/wiki/data-pipeline):
     * write your own annotation parser for providing samples 
     * pack data as memory-based or disk-based dataset according to your need
 2. select a off-the-shelf config script (currently, you have 4 choices----L/M/S/XS), and directly run the script for training.
 An other choice is to write your own config script, including designing new structures. 
 
-##Download 
-####pre-trained models
+## Download 
+#### pre-trained models
 We provide pre-trained weights of 4 models, as well as training logs for your reference, feel free to try. 
 
 * LFD_L pre-trained weight: [Baidu YunPan](https://pan.baidu.com/s/1sgh4ldOVtlTMRjDwInRSWg) Pwd: r1kx,  [MS OneDrive](https://1drv.ms/u/s!Av9h0YMgxdaSkDf8S6IkrE2NMFk4?e=ATsIfX)
@@ -126,12 +126,12 @@ We provide pre-trained weights of 4 models, as well as training logs for your re
 When successfully download the folder, you just put them in the current fold, namely ``./WIDERFACE_train``. It may look like this:
 ``./WIDERFACE_train/WIDERFACE_LFD_L_work_dir_xxxxxxxx_xxxxxx``.
 
-####packed WIDERFACE dataset
+#### packed WIDERFACE dataset
 Download here: [Baidu YunPan](https://pan.baidu.com/s/1DpCVb0FVgtvYMXghtPsU9A) Pwd: hnx5,  [MS OneDrive](https://1drv.ms/u/s!Av9h0YMgxdaSkDs6cy6tz7xXEydi?e=ggNPsa)
 
 After you download the packed dataset, you can put it to `./WIDERFACE_pack/widerface_train.pkl`.
 
-##Qualitative Results
+## Qualitative Results
 We should some qualitative results produced by LFD_L with score threshold 0.5 and nms threshold 0.3.
 
 ![image1](https://github.com/YonghaoHe/wiki-images/blob/main/LFD-wiki/WIDERFACE_test_results/image1_result_compressed.jpg)
